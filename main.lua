@@ -57,6 +57,7 @@ showMainWindow = function()
           vbp:text { text = "Special FX:" },
           vbp:text { text = "F000 - Only play when transitioning to a new pattern" },
           vbp:text { text = "F001 - Only play when not transitioning to a new pattern" },
+          vbp:text { text = "N0xx - Set next pattern to play to xx" },
         },
         vbp:button {
           text = "Play",
@@ -156,6 +157,11 @@ checkForTransitionFills = function()
           end
           if nextPattern.value == currPattern.value and effect.amount_string == "00" then
             line:clear()
+          end
+        end
+        if effect.number_string == "N0" then
+          if nextPattern.value == currPattern.value then
+            nextPattern.value = effect.amount_value
           end
         end
       end
