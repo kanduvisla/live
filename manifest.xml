@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<RenoiseScriptingTool>
+  <ApiVersion>6.1</ApiVersion>
+  <Name>Requencer</Name>
+  <Id>com.gielberkers.requencer</Id>
+  <Author>Giel Berkers</Author>
+  <Description><![CDATA[Use Renoise as a kick-ass sequencer for live performance.]]></Description>
+  <Category>Tools</Category>
+  <Version>0.1</Version>
+  <Scripting>
+    <ScriptFile>main.lua</ScriptFile>
+  </Scripting>
+</RenoiseScriptingTool>
