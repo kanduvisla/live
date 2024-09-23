@@ -12,7 +12,7 @@ local vbwp = vbp.views
 -- Variables used:
 local currLine = 0
 local prevLine = -1
-local currPattern = doc.ObservableNumber(1)
+local currPattern = doc.ObservableNumber(0)
 local nextPattern = doc.ObservableNumber(1)
 
 -- Pattern indicator
@@ -54,7 +54,9 @@ showMainWindow = function()
         vbp:column {
           margin = 1,
           vbp:text { text = "Welcome to Live - a Renoise Live Performance Tool" },
-          vbp:text { text = "Usage: ..." }
+          vbp:text { text = "Special FX:" },
+          vbp:text { text = "F000 - Only play when transitioning to a new pattern" },
+          vbp:text { text = "F001 - Only play when not transitioning to a new pattern" },
         },
         vbp:button {
           text = "Play",
@@ -89,9 +91,9 @@ showMainWindow = function()
           height = 50,
           pressed = function()
             if nextPattern.value > 1 then
-              -- currPattern.value = currPattern.value - 1
               nextPattern.value = nextPattern.value - 1
-              song.transport:set_scheduled_sequence(nextPattern.value)
+              checkForTransitionFills()
+              -- song.transport:set_scheduled_sequence(nextPattern.value)
             end
           end
         },
@@ -101,24 +103,64 @@ showMainWindow = function()
           width = 50,
           height = 50,
           pressed = function()
-            if nextPattern.value < song.transport.song_length.sequence then
+            if nextPattern.value < song.transport.song_length.sequence - 1 then
               nextPattern.value = nextPattern.value + 1
-              -- nextPattern.value = currPattern.value
-              song.transport:set_scheduled_sequence(nextPattern.value)
+              checkForTransitionFills()
+              -- song.transport:set_scheduled_sequence(nextPattern.value)
             end
           end
         }
       }
     }
   )
-  
+ 
   setupPattern()
 end
 
 -- Setup pattern, this is called every time a new pattern begins
 setupPattern = function()
-  currPattern.value = nextPattern.value
-  updatePatternIndicator()
+  if nextPattern.value ~= currPattern.value then
+    local dst = song:pattern(1)
+    local src = song:pattern(nextPattern.value + 1)
+    dst.number_of_lines = src.number_of_lines
+    dst:copy_from(src)
+    -- Hook into here to add custom trig conditions
+    
+    -- O = modulo, for example 001 = every loop, 002, every 2nd loop, 003 = every 3rd, etc.
+    currPattern.value = nextPattern.value
+    checkForTransitionFills()
+    updatePatternIndicator()
+  end
+end
+
+-- Check for transition fills. These are triggered when a transition is going to happen from one pattern to the other
+checkForTransitionFills = function()
+  local dst = song:pattern(1)
+  local src = song:pattern(currPattern + 1)
+  dst:copy_from(src)
+
+  -- F = fill
+  --     F000 - Play when transitioning to the next pattern
+  --     F001 - Play when not transitioning to the next pattern
+  for t=1, #song.tracks do
+    -- Only for note tracks
+    if song.tracks[t].type == 1 then
+      for l=1, dst.number_of_lines do
+        -- Check for filter
+        local line = dst.tracks[t].lines[l]
+        local effect = line:effect_column(1)
+        if effect.number_string == "F0" then
+          -- Remove the not playing ones:
+          if nextPattern.value ~= currPattern.value and effect.amount_string == "01" then
+            line:clear()
+          end
+          if nextPattern.value == currPattern.value and effect.amount_string == "00" then
+            line:clear()
+          end
+        end
+      end
+    end
+  end
 end
 
 -- Add notifier each time the loop ends:
