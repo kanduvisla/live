@@ -12,13 +12,38 @@ local vbwp = vbp.views
 -- Variables used:
 local currLine = 0
 local prevLine = -1
-local currPattern = 1
-local nextPattern = 1
+local currPattern = doc.ObservableNumber(1)
+local nextPattern = doc.ObservableNumber(1)
+
+-- Pattern indicator
+local patternIndicatorView = vbp:text {
+  text =  "-",
+  align = "center",
+  font = "big",
+  style = "strong",
+  width = 100,
+  height = 50
+}
+
+updatePatternIndicator = function()
+  if currPattern.value ~= nextPattern.value then
+    patternIndicatorView.text = string.format(
+      "%s → %s", 
+      currPattern.value,
+      nextPattern.value
+    )
+  else 
+    patternIndicatorView.text = string.format("%s", currPattern.value)
+  end
+end
 
 -- Main window
 showMainWindow = function()
   -- Load song comments (pattern remarks are in song comments)
-
+  nextPattern:add_notifier(updatePatternIndicator)
+  updatePatternIndicator()
+  
+  -- Show dialog:
   app:show_custom_dialog(
     "Live",
     vbp:column {
@@ -37,6 +62,8 @@ showMainWindow = function()
           height = 50,
           pressed = function()
             -- Play pattern 0 in loop
+            currPattern.value = 1
+            nextPattern.value = 1
             song.transport.loop_pattern = true
             local song_pos = renoise.SongPos(1, 1)
             song.transport:start_at(song_pos)
@@ -61,19 +88,24 @@ showMainWindow = function()
           width = 50,
           height = 50,
           pressed = function()
-            if currPattern > 1 then
-              currPattern = currPattern - 1
-              song.transport:set_scheduled_sequence(currPattern)
+            if nextPattern.value > 1 then
+              -- currPattern.value = currPattern.value - 1
+              nextPattern.value = nextPattern.value - 1
+              song.transport:set_scheduled_sequence(nextPattern.value)
             end
           end
         },
+        patternIndicatorView,
         vbp:button {
           text = "Next",
           width = 50,
           height = 50,
           pressed = function()
-             currPattern = currPattern + 1
-             song.transport:set_scheduled_sequence(currPattern)
+            if nextPattern.value < song.transport.song_length.sequence then
+              nextPattern.value = nextPattern.value + 1
+              -- nextPattern.value = currPattern.value
+              song.transport:set_scheduled_sequence(nextPattern.value)
+            end
           end
         }
       }
@@ -85,7 +117,8 @@ end
 
 -- Setup pattern, this is called every time a new pattern begins
 setupPattern = function()
-  print("Setting up pattern")
+  currPattern.value = nextPattern.value
+  updatePatternIndicator()
 end
 
 -- Add notifier each time the loop ends:
