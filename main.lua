@@ -12,9 +12,13 @@ local vbwp = vbp.views
 -- Variables used:
 local currLine = 0
 local prevLine = -1
+local currPattern = 1
+local nextPattern = 1
 
 -- Main window
 showMainWindow = function()
+  -- Load song comments (pattern remarks are in song comments)
+
   app:show_custom_dialog(
     "Live",
     vbp:column {
@@ -46,7 +50,32 @@ showMainWindow = function()
             song.transport:stop()
           end
         }
-
+        -- Add pattern remarks
+        
+      },
+      vbp:horizontal_aligner {
+        margin = 1,
+        mode = "justify",
+        vbp:button {
+          text = "Prev",
+          width = 50,
+          height = 50,
+          pressed = function()
+            if currPattern > 1 then
+              currPattern = currPattern - 1
+              song.transport:set_scheduled_sequence(currPattern)
+            end
+          end
+        },
+        vbp:button {
+          text = "Next",
+          width = 50,
+          height = 50,
+          pressed = function()
+             currPattern = currPattern + 1
+             song.transport:set_scheduled_sequence(currPattern)
+          end
+        }
       }
     }
   )
@@ -56,7 +85,7 @@ end
 
 -- Setup pattern, this is called every time a new pattern begins
 setupPattern = function()
-
+  print("Setting up pattern")
 end
 
 -- Add notifier each time the loop ends:
@@ -65,13 +94,6 @@ local function stepNotifier()
   if currLine == song.patterns[1].number_of_lines then
     -- Change patterns:
     setupPattern()
-  end
-  
-  -- Show trig indicator:
-  for key in pairs(data) do
-    local trackData = data[key]
-    local line = song.patterns[1].tracks[trackData.track].lines[currLine]
-    data[key].trigged.value = line.is_empty == false
   end
 end
 
