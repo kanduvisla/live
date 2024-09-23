@@ -15,7 +15,43 @@ local prevLine = -1
 
 -- Main window
 showMainWindow = function()
+  app:show_custom_dialog(
+    "Live",
+    vbp:column {
+      margin = 1,
+      vbp:horizontal_aligner {
+        margin = 1,
+        mode = "justify", 
+        vbp:column {
+          margin = 1,
+          vbp:text { text = "Welcome to Live - a Renoise Live Performance Tool" },
+          vbp:text { text = "Usage: ..." }
+        },
+        vbp:button {
+          text = "Play",
+          width = 50,
+          height = 50,
+          pressed = function()
+            -- Play pattern 0 in loop
+            song.transport.loop_pattern = true
+            local song_pos = renoise.SongPos(1, 1)
+            song.transport:start_at(song_pos)
+          end
+        },
+        vbp:button {
+          text = "Stop",
+          width = 50,
+          height = 50,
+          pressed = function()
+            song.transport:stop()
+          end
+        }
 
+      }
+    }
+  )
+  
+  setupPattern()
 end
 
 -- Setup pattern, this is called every time a new pattern begins
