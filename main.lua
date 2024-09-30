@@ -94,7 +94,6 @@ showMainWindow = function()
             if nextPattern.value > 1 then
               nextPattern.value = nextPattern.value - 1
               checkForTransitionFills()
-              -- song.transport:set_scheduled_sequence(nextPattern.value)
             end
           end
         },
@@ -107,7 +106,6 @@ showMainWindow = function()
             if nextPattern.value < song.transport.song_length.sequence - 1 then
               nextPattern.value = nextPattern.value + 1
               checkForTransitionFills()
-              -- song.transport:set_scheduled_sequence(nextPattern.value)
             end
           end
         }
