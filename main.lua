@@ -82,6 +82,7 @@ local dialog = vbp:column {
       pressed = function()
         song.transport:stop()
         reset()
+        setupPattern()
       end
     }
     -- Add pattern remarks
@@ -97,7 +98,7 @@ local dialog = vbp:column {
       pressed = function()
         if nextPattern.value > 1 then
           nextPattern.value = nextPattern.value - 1
-          checkForTransitionFills()
+          updatePattern()
         end
       end
     },
@@ -169,6 +170,7 @@ updatePattern = function()
         -- Check for filter
         local line = dst.tracks[t].lines[l]
         local effect = line:effect_column(1)
+        -- Fill:
         if effect.number_string == "LF" then
           -- Remove the not playing ones:
           if nextPattern.value ~= currPattern.value and effect.amount_string == "01" then
@@ -178,20 +180,35 @@ updatePattern = function()
             line:clear()
           end
         end
+        -- Auto-queue next pattern
         if effect.number_string == "LN" then
           if nextPattern.value == currPattern.value then
             nextPattern.value = effect.amount_value
           end
         end
+        -- Trigger
         if effect.number_string == "LT" then
           -- LT00 = !1st
           if effect.amount_string == "00" and patternPlayCount == 0 then
+            line:clear()
+          end
+          -- LT01 == 1st
+          if effect.amount_string == "01" and patternPlayCount ~= 0 then
             line:clear()
           end
           -- LTn0 = nth
           local length = tonumber(effect.amount_string:sub(1, 1))
           local modulo = tonumber(effect.amount_string:sub(2, 2))
           if patternPlayCount % length ~= modulo - 1 then
+            line:clear()
+          end
+        end
+        -- Inversed Trigger
+        if effect.number_string == "LI" then
+          -- LTn0 = nth
+          local length = tonumber(effect.amount_string:sub(1, 1))
+          local modulo = tonumber(effect.amount_string:sub(2, 2))
+          if patternPlayCount % length == modulo - 1 then
             line:clear()
           end
         end
