@@ -16,6 +16,14 @@ local currPattern = doc.ObservableNumber(0)
 local nextPattern = doc.ObservableNumber(1)
 local patternPlayCount = 0
 
+reset = function()
+  currLine = 0
+  prevLine = -1
+  currPattern.value = 0
+  nextPattern.value = 1
+  patternPlayCount = 0
+end
+
 -- Pattern indicator
 local patternIndicatorView = vbp:text {
   text =  "-",
@@ -38,82 +46,87 @@ updatePatternIndicator = function()
   end
 end
 
+nextPattern:add_notifier(updatePatternIndicator)
+
+local dialog = vbp:column {
+  margin = 1,
+  vbp:horizontal_aligner {
+    margin = 1,
+    mode = "justify", 
+    vbp:column {
+      margin = 1,
+      vbp:text { text = "Welcome to Live - a Renoise Live Performance Tool" },
+      vbp:text { text = "Special FX:" },
+      vbp:text { text = "LF00 - Only play when transitioning to a new pattern" },
+      vbp:text { text = "LF01 - Only play when not transitioning to a new pattern" },
+      vbp:text { text = "LNxx - Set next pattern to play to xx" },
+      vbp:text { text = "LTxx - Triggers" },
+    },
+    vbp:button {
+      text = "Play",
+      width = 50,
+      height = 50,
+      pressed = function()
+        -- Play pattern 0 in loop
+        currPattern.value = 1
+        nextPattern.value = 1
+        song.transport.loop_pattern = true
+        local song_pos = renoise.SongPos(1, 1)
+        song.transport:start_at(song_pos)
+      end
+    },
+    vbp:button {
+      text = "Stop",
+      width = 50,
+      height = 50,
+      pressed = function()
+        song.transport:stop()
+        reset()
+      end
+    }
+    -- Add pattern remarks
+    
+  },
+  vbp:horizontal_aligner {
+    margin = 1,
+    mode = "justify",
+    vbp:button {
+      text = "Prev",
+      width = 50,
+      height = 50,
+      pressed = function()
+        if nextPattern.value > 1 then
+          nextPattern.value = nextPattern.value - 1
+          checkForTransitionFills()
+        end
+      end
+    },
+    patternIndicatorView,
+    vbp:button {
+      text = "Next",
+      width = 50,
+      height = 50,
+      pressed = function()
+        if nextPattern.value < song.transport.song_length.sequence - 1 then
+          nextPattern.value = nextPattern.value + 1
+          updatePattern()
+        end
+      end
+    }
+  }
+}
+
+
 -- Main window
 showMainWindow = function()
   -- Load song comments (pattern remarks are in song comments)
-  nextPattern:add_notifier(updatePatternIndicator)
   updatePatternIndicator()
   
+  -- Reset properties:
+  reset()
+  
   -- Show dialog:
-  app:show_custom_dialog(
-    "Live",
-    vbp:column {
-      margin = 1,
-      vbp:horizontal_aligner {
-        margin = 1,
-        mode = "justify", 
-        vbp:column {
-          margin = 1,
-          vbp:text { text = "Welcome to Live - a Renoise Live Performance Tool" },
-          vbp:text { text = "Special FX:" },
-          vbp:text { text = "LF00 - Only play when transitioning to a new pattern" },
-          vbp:text { text = "LF01 - Only play when not transitioning to a new pattern" },
-          vbp:text { text = "LNxx - Set next pattern to play to xx" },
-          vbp:text { text = "LTxx - Triggers" },
-        },
-        vbp:button {
-          text = "Play",
-          width = 50,
-          height = 50,
-          pressed = function()
-            -- Play pattern 0 in loop
-            currPattern.value = 1
-            nextPattern.value = 1
-            song.transport.loop_pattern = true
-            local song_pos = renoise.SongPos(1, 1)
-            song.transport:start_at(song_pos)
-          end
-        },
-        vbp:button {
-          text = "Stop",
-          width = 50,
-          height = 50,
-          pressed = function()
-            song.transport:stop()
-          end
-        }
-        -- Add pattern remarks
-        
-      },
-      vbp:horizontal_aligner {
-        margin = 1,
-        mode = "justify",
-        vbp:button {
-          text = "Prev",
-          width = 50,
-          height = 50,
-          pressed = function()
-            if nextPattern.value > 1 then
-              nextPattern.value = nextPattern.value - 1
-              checkForTransitionFills()
-            end
-          end
-        },
-        patternIndicatorView,
-        vbp:button {
-          text = "Next",
-          width = 50,
-          height = 50,
-          pressed = function()
-            if nextPattern.value < song.transport.song_length.sequence - 1 then
-              nextPattern.value = nextPattern.value + 1
-              updatePattern()
-            end
-          end
-        }
-      }
-    }
-  )
+  app:show_custom_dialog("Live", dialog)
  
   setupPattern()
 end
@@ -121,6 +134,7 @@ end
 -- Setup pattern, this is called every time a new pattern begins
 setupPattern = function()
   if nextPattern.value ~= currPattern.value then
+    print("X")
     local dst = song:pattern(1)
     local src = song:pattern(nextPattern.value + 1)
     dst.number_of_lines = src.number_of_lines
@@ -133,6 +147,7 @@ setupPattern = function()
     updatePattern()
     updatePatternIndicator()
   else
+    print("Y")
     patternPlayCount = patternPlayCount + 1
     updatePattern()
   end
@@ -177,7 +192,7 @@ updatePattern = function()
           local length = tonumber(effect.amount_string:sub(1, 1))
           local modulo = tonumber(effect.amount_string:sub(2, 2))
           if patternPlayCount % length ~= modulo - 1 then
-            line.clear()
+            line:clear()
           end
         end
       end
