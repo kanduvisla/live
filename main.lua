@@ -14,6 +14,7 @@ local currLine = 0
 local prevLine = -1
 local currPattern = doc.ObservableNumber(0)
 local nextPattern = doc.ObservableNumber(1)
+local patternPlayCount = 0
 
 -- Pattern indicator
 local patternIndicatorView = vbp:text {
@@ -55,9 +56,10 @@ showMainWindow = function()
           margin = 1,
           vbp:text { text = "Welcome to Live - a Renoise Live Performance Tool" },
           vbp:text { text = "Special FX:" },
-          vbp:text { text = "F000 - Only play when transitioning to a new pattern" },
-          vbp:text { text = "F001 - Only play when not transitioning to a new pattern" },
-          vbp:text { text = "N0xx - Set next pattern to play to xx" },
+          vbp:text { text = "LF00 - Only play when transitioning to a new pattern" },
+          vbp:text { text = "LF01 - Only play when not transitioning to a new pattern" },
+          vbp:text { text = "LNxx - Set next pattern to play to xx" },
+          vbp:text { text = "LTxx - Triggers" },
         },
         vbp:button {
           text = "Play",
@@ -105,7 +107,7 @@ showMainWindow = function()
           pressed = function()
             if nextPattern.value < song.transport.song_length.sequence - 1 then
               nextPattern.value = nextPattern.value + 1
-              checkForTransitionFills()
+              updatePattern()
             end
           end
         }
@@ -124,16 +126,20 @@ setupPattern = function()
     dst.number_of_lines = src.number_of_lines
     dst:copy_from(src)
     -- Hook into here to add custom trig conditions
-    
+    patternPlayCount = 0
+
     -- O = modulo, for example 001 = every loop, 002, every 2nd loop, 003 = every 3rd, etc.
     currPattern.value = nextPattern.value
-    checkForTransitionFills()
+    updatePattern()
     updatePatternIndicator()
+  else
+    patternPlayCount = patternPlayCount + 1
+    updatePattern()
   end
 end
 
 -- Check for transition fills. These are triggered when a transition is going to happen from one pattern to the other
-checkForTransitionFills = function()
+updatePattern = function()
   local dst = song:pattern(1)
   local src = song:pattern(currPattern + 1)
   dst:copy_from(src)
@@ -148,7 +154,7 @@ checkForTransitionFills = function()
         -- Check for filter
         local line = dst.tracks[t].lines[l]
         local effect = line:effect_column(1)
-        if effect.number_string == "F0" then
+        if effect.number_string == "LF" then
           -- Remove the not playing ones:
           if nextPattern.value ~= currPattern.value and effect.amount_string == "01" then
             line:clear()
@@ -157,9 +163,21 @@ checkForTransitionFills = function()
             line:clear()
           end
         end
-        if effect.number_string == "N0" then
+        if effect.number_string == "LN" then
           if nextPattern.value == currPattern.value then
             nextPattern.value = effect.amount_value
+          end
+        end
+        if effect.number_string == "LT" then
+          -- LT00 = !1st
+          if effect.amount_string == "00" and patternPlayCount == 0 then
+            line:clear()
+          end
+          -- LTn0 = nth
+          local length = tonumber(effect.amount_string:sub(1, 1))
+          local modulo = tonumber(effect.amount_string:sub(2, 2))
+          if patternPlayCount % length ~= modulo - 1 then
+            line.clear()
           end
         end
       end
