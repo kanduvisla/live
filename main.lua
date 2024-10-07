@@ -212,6 +212,17 @@ updatePattern = function()
             line:clear()
           end
         end
+        -- Start track muted, and provide functionality for auto-unmute
+        if effect.number_string == "LM" then
+          if patternPlayCount == 0 then
+            song.tracks[t]:mute()
+          end
+          if effect.amount_string != "00" then
+            if patternPlayCount == tonumber(effect.amount_string) then
+              song.tracks[t]:unmute()
+            end
+          end
+        end
       end
     end
   end

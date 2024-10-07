@@ -7,6 +7,7 @@ local function testGetPatternDetails()
     local input = [[
 #1
 Lorem ipsum
+Line 2
 #2
 Dolar sit amet
 #4
@@ -16,9 +17,6 @@ Foo Bar
     local output = getPatternDetails(input)
     print(tableLength(output))
     var_dump(output)
-    for k, v in pairs(output) do
-        print(k, v)
-    end
 end
 
 testGetPatternDetails()

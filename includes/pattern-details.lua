@@ -1,7 +1,13 @@
-getPatternDetails = function(input) 
+getPatternDetails = function(text)
     local result = {}
-    for index, text in input:gmatch("#(%d+)%s*(.-)%s*(?=#%d+|$)") do
-        result[tonumber(index)] = text:match("^%s*(.-)%s*$")  -- Trim leading and trailing whitespace
+    local index = 0
+    for line in text:gmatch("([^\n]+)") do
+        if line:sub(1,1) == "#" then
+            index = tonumber(line:sub(2))
+            result[index] = ""
+        else 
+            result[index] = result[index] .. line .. "\n"
+        end
     end
     return result
 end
