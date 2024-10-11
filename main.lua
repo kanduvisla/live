@@ -57,10 +57,11 @@ local dialog = vbp:column {
       margin = 1,
       vbp:text { text = "Welcome to Live - a Renoise Live Performance Tool" },
       vbp:text { text = "Special FX:" },
-      vbp:text { text = "LF00 - Only play when transitioning to a new pattern" },
-      vbp:text { text = "LF01 - Only play when not transitioning to a new pattern" },
+      vbp:text { text = "LF00 / LF01 - Play only on FILL / !FILL" },
+      vbp:text { text = "LMxx - Start muted, unmute after xx plays" },
       vbp:text { text = "LNxx - Set next pattern to play to xx" },
-      vbp:text { text = "LTxx - Triggers" },
+      vbp:text { text = "LTxy - Trig (00=1st, 01=!1st, x mod y)" },
+      vbp:text { text = "LIxy - Inverse Trig (x mod y)" },
     },
     vbp:button {
       text = "Play",
@@ -143,16 +144,74 @@ updatePattern = function()
   local src = song:pattern(currPattern + 1)
   dst:copy_from(src)
 
-  -- F = fill
-  --     F000 - Play when transitioning to the next pattern
-  --     F001 - Play when not transitioning to the next pattern
-  for t=1, #song.tracks do
+  for t=1, #dst.tracks do
     -- Only for note tracks
     if song.tracks[t].type == 1 then
       for l=1, dst.number_of_lines do
         -- Check for filter
         local line = dst.tracks[t].lines[l]
+        
+        -- Check for column effects (the apply to a single column):
+        local columns = line.note_columns
+        for c=1, #columns do
+          local column = line:note_column(c)
+          local effect_number = column.effect_number_string
+          local effect_amount = column.effect_amount_string
+          -- Fill:
+          if effect_number == "LF" then
+            -- Remove the not playing ones:
+            if nextPattern.value ~= currPattern.value and effect_amount == "01" then
+              column:clear()
+            end
+            if nextPattern.value == currPattern.value and effect_amount == "00" then
+              column:clear()
+            end
+          end
+         
+          -- Trigger
+          if effect_number == "LT" then
+            if effect_amount == "00" and patternPlayCount == 0 then
+              column:clear()
+            end
+
+            if effect_amount == "01" and patternPlayCount ~= 0 then
+              column:clear()
+            end
+
+            local length = tonumber(effect_amount:sub(1, 1))
+            local modulo = tonumber(effect_amount:sub(2, 2))
+            if patternPlayCount % length ~= modulo - 1 then
+              print(effect_amount)
+              column:clear()
+            end
+          end
+          
+          -- Inversed Trigger
+          if effect_number == "LI" then
+            local length = tonumber(effect_amount:sub(1, 1))
+            local modulo = tonumber(effect_amount:sub(2, 2))
+            if patternPlayCount % length == modulo - 1 then
+              print(effect_amount)
+              column:clear()
+            end
+          end
+          
+          -- Start track muted, and provide functionality for auto-unmute
+          if effect_number == "LM" then
+            if patternPlayCount == 0 then
+              song.tracks[t]:set_column_is_muted(c, true)
+            end
+            if effect_amount ~= "00" then
+              if patternPlayCount == tonumber(effect_amount) then
+                song.tracks[t]:set_column_is_muted(c, false)
+              end
+            end
+          end
+        end
+        
+        -- Check for line effect (these apply to the whole line):
         local effect = line:effect_column(1)
+        
         -- Fill:
         if effect.number_string == "LF" then
           -- Remove the not playing ones:
@@ -163,38 +222,40 @@ updatePattern = function()
             line:clear()
           end
         end
+        
         -- Auto-queue next pattern
         if effect.number_string == "LN" then
           if nextPattern.value == currPattern.value then
             nextPattern.value = effect.amount_value
           end
         end
+        
         -- Trigger
         if effect.number_string == "LT" then
-          -- LT00 = !1st
           if effect.amount_string == "00" and patternPlayCount == 0 then
             line:clear()
           end
-          -- LT01 == 1st
+
           if effect.amount_string == "01" and patternPlayCount ~= 0 then
             line:clear()
           end
-          -- LTn0 = nth
+
           local length = tonumber(effect.amount_string:sub(1, 1))
           local modulo = tonumber(effect.amount_string:sub(2, 2))
           if patternPlayCount % length ~= modulo - 1 then
             line:clear()
           end
         end
+        
         -- Inversed Trigger
         if effect.number_string == "LI" then
-          -- LTn0 = nth
           local length = tonumber(effect.amount_string:sub(1, 1))
           local modulo = tonumber(effect.amount_string:sub(2, 2))
           if patternPlayCount % length == modulo - 1 then
             line:clear()
           end
         end
+        
         -- Start track muted, and provide functionality for auto-unmute
         if effect.number_string == "LM" then
           if patternPlayCount == 0 then
@@ -222,11 +283,13 @@ end
 
 -- Idle observer
 local function idleObserver()
-  currLine = song.transport.playback_pos.line
-  if song.transport.playing and currLine ~= prevLine then
-    stepNotifier()
-    prevLine = currLine
-  end
+  if song ~= nil then
+    currLine = song.transport.playback_pos.line
+    if song.transport.playing and currLine ~= prevLine then
+      stepNotifier()
+      prevLine = currLine
+    end
+    end
 end
 
 -- Main window
