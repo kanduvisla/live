@@ -1,7 +1,7 @@
 -- Some basic vars for reuse:
 local app = renoise.app()
 local tool = renoise.tool()
-local song = renoise.song()
+local song = nil
 local doc = renoise.Document
 
 -- View Builder for preferences and set scale
@@ -117,25 +117,9 @@ local dialog = vbp:column {
   }
 }
 
-
--- Main window
-showMainWindow = function()
-  -- Load song comments (pattern remarks are in song comments)
-  updatePatternIndicator()
-  
-  -- Reset properties:
-  reset()
-  
-  -- Show dialog:
-  app:show_custom_dialog("Live", dialog)
- 
-  setupPattern()
-end
-
 -- Setup pattern, this is called every time a new pattern begins
 setupPattern = function()
   if nextPattern.value ~= currPattern.value then
-    print("X")
     local dst = song:pattern(1)
     local src = song:pattern(nextPattern.value + 1)
     dst.number_of_lines = src.number_of_lines
@@ -148,7 +132,6 @@ setupPattern = function()
     updatePattern()
     updatePatternIndicator()
   else
-    print("Y")
     patternPlayCount = patternPlayCount + 1
     updatePattern()
   end
@@ -217,7 +200,7 @@ updatePattern = function()
           if patternPlayCount == 0 then
             song.tracks[t]:mute()
           end
-          if effect.amount_string != "00" then
+          if effect.amount_string ~= "00" then
             if patternPlayCount == tonumber(effect.amount_string) then
               song.tracks[t]:unmute()
             end
@@ -237,14 +220,37 @@ local function stepNotifier()
   end
 end
 
--- Step notifier:
-renoise.tool().app_idle_observable:add_notifier(function()
+-- Idle observer
+local function idleObserver()
   currLine = song.transport.playback_pos.line
   if song.transport.playing and currLine ~= prevLine then
     stepNotifier()
     prevLine = currLine
   end
-end)
+end
+
+-- Main window
+showMainWindow = function()
+  if song == nil then
+    song = renoise.song()
+  end
+  
+  -- Step notifier:
+  if renoise.tool().app_idle_observable:has_notifier(idleObserver) == false then
+    renoise.tool().app_idle_observable:add_notifier(idleObserver)
+  end
+
+  -- Load song comments (pattern remarks are in song comments)
+  updatePatternIndicator()
+  
+  -- Reset properties:
+  reset()
+  
+  -- Show dialog:
+  app:show_custom_dialog("Live", dialog)
+ 
+  setupPattern()
+end
 
 -- Add menu entry:
 tool:add_menu_entry {
