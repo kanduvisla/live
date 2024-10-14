@@ -1,0 +1,55 @@
+name: XRNX Package and Release
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+
+env:
+  VERSION: v0.1
+
+jobs:
+  package-and-release:
+    runs-on: ubuntu-latest
+    steps:
+      # Checkout the repository
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      
+      # Zip the contents or specified directory of the repo
+      - name: Zip XRNX Package
+        run: zip -r com.gielberkers.live_${{ env.VERSION }}.xrnx . -x "*.git*" "*.github*"
+      
+      # Create a tag with the generated tag name
+      - name: Create and Push Tag
+        run: |
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action"
+          git tag $VERSION
+          git push origin $VERSION
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      
+      # Create a GitHub release using the generated tag name
+      - name: Create GitHub Release
+        id: create_release
+        uses: actions/create-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: ${{ env.VERSION }}
+          release_name: Release ${{ env.VERSION }}
+          draft: false
+          prerelease: false
+      
+      # Upload the XRNX file to the GitHub release
+      - name: Upload Release Asset
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: ./com.gielberkers.live_${{ env.VERSION }}.xrnx
+          asset_name: com.gielberkers.live_${{ env.VERSION }}.xrnx
+          asset_content_type: application/octet-stream
