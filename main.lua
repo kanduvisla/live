@@ -1,3 +1,5 @@
+require("../includes/track_play_count.lua")
+
 -- Some basic vars for reuse:
 local app = renoise.app()
 local tool = renoise.tool()
@@ -14,14 +16,18 @@ local currLine = 0
 local prevLine = -1
 local currPattern = doc.ObservableNumber(0)
 local nextPattern = doc.ObservableNumber(1)
-local patternPlayCount = {} -- Keep play count on a per-pattern basis
+local patternPlayCount = 0
+local trackPlayCount = {} -- Keep play count on a per-track basis
+local trackLengths = {}   -- Remember the individual lengths of tracks
 
 reset = function()
   currLine = 0
   prevLine = -1
   currPattern.value = 0
   nextPattern.value = 1
-  patternPlayCount = {}
+  patternPlayCount = 0
+  trackPlayCount = {}
+  trackLengths = {}
 end
 
 -- Pattern indicator
@@ -120,21 +126,48 @@ local dialog = vbp:column {
 
 -- Setup pattern, this is called every time a new pattern begins
 setupPattern = function()
+  local dst = song:pattern(1)
   if nextPattern.value ~= currPattern.value then
-    local dst = song:pattern(1)
+    -- Prepare a new pattern
     local src = song:pattern(nextPattern.value + 1)
     dst.number_of_lines = src.number_of_lines
     dst:copy_from(src)
 
-    patternPlayCount = {}
+    -- Reset the count:
+    patternPlayCount = 0
+    trackPlayCount = {}
+    for t=1, #dst.tracks do
+      -- Only for note tracks
+      if song.tracks[t].type == 1 then
+        trackPlayCount[t] = 0
+        trackLengths[t] = get_track_length(song.tracks[t])
+      end
+    end
+
     currPattern.value = nextPattern.value
 
     updatePattern()
     updatePatternIndicator()
   else
     patternPlayCount = patternPlayCount + 1
+    -- Update track play count
     updatePattern()
   end
+end
+
+-- Get the length of an individual track (based on it's cutoff point)
+get_track_length = function(track)
+  local dst = song:pattern(1)
+  local number_of_lines = dst.number_of_lines
+  for l=1, number_of_lines do
+    local line = track.lines[l]
+    local effect = line:effect_column(1)
+    if effect.number_string == "LC" then
+      -- Cut!
+      return l
+    end
+  end
+  return number_of_lines
 end
 
 -- Check for transition fills. These are triggered when a transition is going to happen from one pattern to the other
@@ -312,6 +345,7 @@ showMainWindow = function()
   setupPattern()
 end
 
+-- Reset when a new project is loaded:
 renoise.tool().app_release_document_observable:add_notifier(function()
   song = nil
 end)
