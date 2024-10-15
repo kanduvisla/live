@@ -80,4 +80,4 @@ This is a rough lists of ideas that I want to add to this plugin in the future:
 
 ## Known issues
 
-No known issues are known at the time.
+- Things break when loading a new song while the Live dialog is open. Close the dialog before opening a new song.

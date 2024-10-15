@@ -180,7 +180,6 @@ updatePattern = function()
             local length = tonumber(effect_amount:sub(1, 1))
             local modulo = tonumber(effect_amount:sub(2, 2))
             if patternPlayCount % length ~= modulo - 1 then
-              print(effect_amount)
               column:clear()
             end
           end
@@ -190,7 +189,6 @@ updatePattern = function()
             local length = tonumber(effect_amount:sub(1, 1))
             local modulo = tonumber(effect_amount:sub(2, 2))
             if patternPlayCount % length == modulo - 1 then
-              print(effect_amount)
               column:clear()
             end
           end
@@ -313,6 +311,10 @@ showMainWindow = function()
  
   setupPattern()
 end
+
+renoise.tool().app_release_document_observable:add_notifier(function()
+  song = nil
+end)
 
 -- Add menu entry:
 tool:add_menu_entry {
