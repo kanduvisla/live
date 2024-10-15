@@ -17,7 +17,6 @@ local prevLine = -1
 local currPattern = doc.ObservableNumber(0)
 local nextPattern = doc.ObservableNumber(1)
 local patternPlayCount = 0
-local trackPlayCount = {} -- Keep play count on a per-track basis
 local trackLengths = {}   -- Remember the individual lengths of tracks
 
 reset = function()
@@ -26,7 +25,6 @@ reset = function()
   currPattern.value = 0
   nextPattern.value = 1
   patternPlayCount = 0
-  trackPlayCount = {}
   trackLengths = {}
 end
 
@@ -135,11 +133,9 @@ setupPattern = function()
 
     -- Reset the count:
     patternPlayCount = 0
-    trackPlayCount = {}
     for t=1, #dst.tracks do
       -- Only for note tracks
       if song.tracks[t].type == 1 then
-        trackPlayCount[t] = 0
         trackLengths[t] = get_track_length(song.tracks[t])
       end
     end
@@ -172,9 +168,12 @@ end
 
 -- Check for transition fills. These are triggered when a transition is going to happen from one pattern to the other
 updatePattern = function()
+  -- TODO: refactor this whole function in multiple - testable functions
   local dst = song:pattern(1)
   local src = song:pattern(currPattern + 1)
   dst:copy_from(src)
+
+  local trackPlayCount = get_track_play_count(patternPlayCount, dst.number_of_lines, trackLengths)
 
   for t=1, #dst.tracks do
     -- Only for note tracks
@@ -182,7 +181,89 @@ updatePattern = function()
       for l=1, dst.number_of_lines do
         -- Check for filter
         local line = dst.tracks[t].lines[l]
+
+        -- Check for track effect (these apply to the whole line):
+        local effect = line:effect_column(1)
+
+        -- Cutoff point:
+        if effect.number_string == "LC" then
+          -- A cutoff point indicates a place in the track where a selection needs to be copy/pasted.
+          -- This means we "fill" the pattern with everything that is above the LC, and keep track of how many
+          -- times it has already copied to keep the remainder in mind:
+          for fl=1, l do
+            -- How many times does this pattern "fit" in this track:
+            local duplicationCount = math.ceil(dst.number_of_lines / trackLengths[t])
+            -- Offset from the previous iteration:
+            local offset = 0
+            if patternPlayCount > 0 then
+              offset = (patternPlayCount * dst.number_of_lines) % trackLengths[t]
+            end
+            for d=1, duplicationCount do
+              local dstLine = fl + (trackLengths[t] * (duplicationCount - 1)) - offset
+              if dstLine < dst.number_of_lines and dstLine > 0 then
+                dst.tracks[t]:line(dstLine):copy_from(src.tracks[t]:line(fl))
+              end
+            end
+          end
+
+        -- Fill:
+        elseif effect.number_string == "LF" then
+          -- Remove the not playing ones:
+          if nextPattern.value ~= currPattern.value and effect.amount_string == "01" then
+            line:clear()
+          end
+          if nextPattern.value == currPattern.value and effect.amount_string == "00" then
+            line:clear()
+          end
         
+        
+        -- Auto-queue next pattern:
+        elseif effect.number_string == "LN" then
+          if nextPattern.value == currPattern.value then
+            nextPattern.value = effect.amount_value
+          end
+        
+        -- Trigger:
+        elseif effect.number_string == "LT" then
+          -- TODO: This should be with trackPlayCount:
+          if effect.amount_string == "00" and patternPlayCount == 0 then
+            line:clear()
+          end
+
+          -- TODO: This should be with trackPlayCount:
+          if effect.amount_string == "01" and patternPlayCount ~= 0 then
+            line:clear()
+          end
+
+          -- TODO: This should be with trackPlayCount:
+          local length = tonumber(effect.amount_string:sub(1, 1))
+          local modulo = tonumber(effect.amount_string:sub(2, 2))
+          if patternPlayCount % length ~= modulo - 1 then
+            line:clear()
+          end
+        
+        -- Inversed Trigger:
+        elseif effect.number_string == "LI" then
+          -- TODO: This should be with trackPlayCount:
+          local length = tonumber(effect.amount_string:sub(1, 1))
+          local modulo = tonumber(effect.amount_string:sub(2, 2))
+          if patternPlayCount % length == modulo - 1 then
+            line:clear()
+          end
+        
+        -- Start track muted, and provide functionality for auto-unmute:
+        elseif effect.number_string == "LM" then
+          -- TODO: This should be with trackPlayCount:
+          if patternPlayCount == 0 then
+            song.tracks[t]:mute()
+          end
+          if effect.amount_string ~= "00" then
+            if patternPlayCount == tonumber(effect.amount_string) then
+              song.tracks[t]:unmute()
+            end
+          end
+        end
+
         -- Check for column effects (the apply to a single column):
         local columns = line.note_columns
         for c=1, #columns do
@@ -198,36 +279,38 @@ updatePattern = function()
             if nextPattern.value == currPattern.value and effect_amount == "00" then
               column:clear()
             end
-          end
-         
-          -- Trigger
-          if effect_number == "LT" then
+          
+          -- Trigger:
+          elseif effect_number == "LT" then
+            -- TODO: This should be with trackPlayCount:
             if effect_amount == "00" and patternPlayCount == 0 then
               column:clear()
             end
 
+            -- TODO: This should be with trackPlayCount:
             if effect_amount == "01" and patternPlayCount ~= 0 then
               column:clear()
             end
 
+            -- TODO: This should be with trackPlayCount:
             local length = tonumber(effect_amount:sub(1, 1))
             local modulo = tonumber(effect_amount:sub(2, 2))
             if patternPlayCount % length ~= modulo - 1 then
               column:clear()
             end
-          end
           
-          -- Inversed Trigger
-          if effect_number == "LI" then
+          -- Inversed Trigger:
+          elseif effect_number == "LI" then
+            -- TODO: This should be with trackPlayCount:
             local length = tonumber(effect_amount:sub(1, 1))
             local modulo = tonumber(effect_amount:sub(2, 2))
             if patternPlayCount % length == modulo - 1 then
               column:clear()
             end
-          end
           
-          -- Start track muted, and provide functionality for auto-unmute
-          if effect_number == "LM" then
+          -- Start column muted, and provide functionality for auto-unmute:
+          elseif effect_number == "LM" then
+            -- TODO: This should be with trackPlayCount:
             if patternPlayCount == 0 then
               song.tracks[t]:set_column_is_muted(c, true)
             end
@@ -237,66 +320,7 @@ updatePattern = function()
               end
             end
           end
-        end
-        
-        -- Check for line effect (these apply to the whole line):
-        local effect = line:effect_column(1)
-        
-        -- Fill:
-        if effect.number_string == "LF" then
-          -- Remove the not playing ones:
-          if nextPattern.value ~= currPattern.value and effect.amount_string == "01" then
-            line:clear()
-          end
-          if nextPattern.value == currPattern.value and effect.amount_string == "00" then
-            line:clear()
-          end
-        end
-        
-        -- Auto-queue next pattern
-        if effect.number_string == "LN" then
-          if nextPattern.value == currPattern.value then
-            nextPattern.value = effect.amount_value
-          end
-        end
-        
-        -- Trigger
-        if effect.number_string == "LT" then
-          if effect.amount_string == "00" and patternPlayCount == 0 then
-            line:clear()
-          end
-
-          if effect.amount_string == "01" and patternPlayCount ~= 0 then
-            line:clear()
-          end
-
-          local length = tonumber(effect.amount_string:sub(1, 1))
-          local modulo = tonumber(effect.amount_string:sub(2, 2))
-          if patternPlayCount % length ~= modulo - 1 then
-            line:clear()
-          end
-        end
-        
-        -- Inversed Trigger
-        if effect.number_string == "LI" then
-          local length = tonumber(effect.amount_string:sub(1, 1))
-          local modulo = tonumber(effect.amount_string:sub(2, 2))
-          if patternPlayCount % length == modulo - 1 then
-            line:clear()
-          end
-        end
-        
-        -- Start track muted, and provide functionality for auto-unmute
-        if effect.number_string == "LM" then
-          if patternPlayCount == 0 then
-            song.tracks[t]:mute()
-          end
-          if effect.amount_string ~= "00" then
-            if patternPlayCount == tonumber(effect.amount_string) then
-              song.tracks[t]:unmute()
-            end
-          end
-        end
+        end        
       end
     end
   end
