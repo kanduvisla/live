@@ -1,4 +1,5 @@
-require("../includes/track_play_count.lua")
+require("includes/track_play_count.lua")
+require("includes/note_triggers.lua")
 
 -- Some basic vars for reuse:
 local app = renoise.app()
@@ -217,14 +218,18 @@ updatePattern = function()
                 
                 -- Fill:
                 if lineEffect.number_string == "LF" then
-                  -- TODO
+                  -- TODO, how to do this with polyrhythm?
                 elseif lineEffect.number_string == "LT" then
-
+                  -- Trigger:
+                  if is_trig_active(lineEffect.amount_string, dstTrackPlayCount) then
+                    dst.tracks[t]:line(dstLine):copy_from(srcLine)
+                  end
                 elseif lineEffect.number_string == "LI" then
-
+                  -- Inverse Trigger:
+                  if not is_trig_active(lineEffect.amount_string, dstTrackPlayCount) then
+                    dst.tracks[t]:line(dstLine):copy_from(srcLine)
+                  end
                 end
-
-                dst.tracks[t]:line(dstLine):copy_from(srcLine)
 
                 -- TODO: columns
               end
@@ -249,28 +254,14 @@ updatePattern = function()
         
         -- Trigger:
         elseif effect.number_string == "LT" then
-          if effect.amount_string == "00" and patternPlayCount == 0 then
+          if not is_trig_active(effect.amount_string, patternPlayCount) then
             line:clear()
           end
-
-          if effect.amount_string == "01" and patternPlayCount ~= 0 then
-            line:clear()
-          end
-
-          local length = tonumber(effect.amount_string:sub(1, 1))
-          local modulo = tonumber(effect.amount_string:sub(2, 2))
-          if patternPlayCount % length ~= modulo - 1 then
-            line:clear()
-          end
-        
         -- Inversed Trigger:
         elseif effect.number_string == "LI" then
-          local length = tonumber(effect.amount_string:sub(1, 1))
-          local modulo = tonumber(effect.amount_string:sub(2, 2))
-          if patternPlayCount % length == modulo - 1 then
+          if is_trig_active(effect.amount_string, patternPlayCount) then
             line:clear()
-          end
-        
+          end        
         -- Start track muted, and provide functionality for auto-unmute:
         elseif effect.number_string == "LM" then
           if patternPlayCount == 0 then
@@ -301,28 +292,14 @@ updatePattern = function()
           
           -- Trigger:
           elseif effect_number == "LT" then
-            if effect_amount == "00" and patternPlayCount == 0 then
+            if not is_trig_active(effect_amount, patternPlayCount) then
               column:clear()
             end
-
-            if effect_amount == "01" and patternPlayCount ~= 0 then
-              column:clear()
-            end
-
-            local length = tonumber(effect_amount:sub(1, 1))
-            local modulo = tonumber(effect_amount:sub(2, 2))
-            if patternPlayCount % length ~= modulo - 1 then
-              column:clear()
-            end
-          
           -- Inversed Trigger:
           elseif effect_number == "LI" then
-            local length = tonumber(effect_amount:sub(1, 1))
-            local modulo = tonumber(effect_amount:sub(2, 2))
-            if patternPlayCount % length == modulo - 1 then
+            if is_trig_active(effect_amount, patternPlayCount) then
               column:clear()
-            end
-          
+            end          
           -- Start column muted, and provide functionality for auto-unmute:
           elseif effect_number == "LM" then
             if patternPlayCount == 0 then

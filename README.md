@@ -28,6 +28,8 @@ This tool adds the following effects to the pattern editor:
 
 - The following effects are applicable to both **columns** and **tracks**:
     - Note triggers
+        - 1st pattern only
+            `LT01`
         - !1st pattern only
             `LT00`
         - nth pattern only
@@ -83,3 +85,4 @@ This is a rough lists of ideas that I want to add to this plugin in the future:
 - Things break when loading a new song while the Live dialog is open. Close the dialog before opening a new song.
 - Line effects are only measured on effect column 1
 - Fills don't work in tracks that are cut with the `LC` command
+- Muting in tracks that are cut with the `LC` command only work for the full length
