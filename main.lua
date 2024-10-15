@@ -5,6 +5,7 @@ local app = renoise.app()
 local tool = renoise.tool()
 local song = nil
 local doc = renoise.Document
+local benchmark = false   -- Output benchmarking information to the console, for dev purposes
 
 -- View Builder for preferences and set scale
 local vbp = renoise.ViewBuilder()
@@ -168,6 +169,11 @@ end
 
 -- Check for transition fills. These are triggered when a transition is going to happen from one pattern to the other
 updatePattern = function()
+  -- Benchmark:
+  if benchmark == true then
+    local time = os.clock()
+  end
+
   -- TODO: refactor this whole function in multiple - testable functions
   local dst = song:pattern(1)
   local src = song:pattern(currPattern + 1)
@@ -201,7 +207,26 @@ updatePattern = function()
             for d=1, duplicationCount do
               local dstLine = fl + (trackLengths[t] * (duplicationCount - 1)) - offset
               if dstLine < dst.number_of_lines and dstLine > 0 then
-                dst.tracks[t]:line(dstLine):copy_from(src.tracks[t]:line(fl))
+                -- Check for trigs:
+
+                -- A virtual count to see how many times this track has played
+                -- This is used to determine if trigs need to be added:
+                local dstTrackPlayCount = math.floor(((patternPlayCount * dst.number_of_lines) + dstLine) / trackLengths[t])
+                local srcLine = src.tracks[t]:line(fl)
+                local lineEffect = srcLine:effect_column(1)
+                
+                -- Fill:
+                if lineEffect.number_string == "LF" then
+                  -- TODO
+                elseif lineEffect.number_string == "LT" then
+
+                elseif lineEffect.number_string == "LI" then
+
+                end
+
+                dst.tracks[t]:line(dstLine):copy_from(srcLine)
+
+                -- TODO: columns
               end
             end
           end
@@ -209,13 +234,12 @@ updatePattern = function()
         -- Fill:
         elseif effect.number_string == "LF" then
           -- Remove the not playing ones:
+          -- TODO: Check if this is correct:
           if nextPattern.value ~= currPattern.value and effect.amount_string == "01" then
             line:clear()
-          end
-          if nextPattern.value == currPattern.value and effect.amount_string == "00" then
+          elseif nextPattern.value == currPattern.value and effect.amount_string == "00" then
             line:clear()
           end
-        
         
         -- Auto-queue next pattern:
         elseif effect.number_string == "LN" then
@@ -225,17 +249,14 @@ updatePattern = function()
         
         -- Trigger:
         elseif effect.number_string == "LT" then
-          -- TODO: This should be with trackPlayCount:
           if effect.amount_string == "00" and patternPlayCount == 0 then
             line:clear()
           end
 
-          -- TODO: This should be with trackPlayCount:
           if effect.amount_string == "01" and patternPlayCount ~= 0 then
             line:clear()
           end
 
-          -- TODO: This should be with trackPlayCount:
           local length = tonumber(effect.amount_string:sub(1, 1))
           local modulo = tonumber(effect.amount_string:sub(2, 2))
           if patternPlayCount % length ~= modulo - 1 then
@@ -244,7 +265,6 @@ updatePattern = function()
         
         -- Inversed Trigger:
         elseif effect.number_string == "LI" then
-          -- TODO: This should be with trackPlayCount:
           local length = tonumber(effect.amount_string:sub(1, 1))
           local modulo = tonumber(effect.amount_string:sub(2, 2))
           if patternPlayCount % length == modulo - 1 then
@@ -253,7 +273,6 @@ updatePattern = function()
         
         -- Start track muted, and provide functionality for auto-unmute:
         elseif effect.number_string == "LM" then
-          -- TODO: This should be with trackPlayCount:
           if patternPlayCount == 0 then
             song.tracks[t]:mute()
           end
@@ -273,26 +292,23 @@ updatePattern = function()
           -- Fill:
           if effect_number == "LF" then
             -- Remove the not playing ones:
+            -- TODO: Check if this is correct:
             if nextPattern.value ~= currPattern.value and effect_amount == "01" then
               column:clear()
-            end
-            if nextPattern.value == currPattern.value and effect_amount == "00" then
+            elseif nextPattern.value == currPattern.value and effect_amount == "00" then
               column:clear()
             end
           
           -- Trigger:
           elseif effect_number == "LT" then
-            -- TODO: This should be with trackPlayCount:
             if effect_amount == "00" and patternPlayCount == 0 then
               column:clear()
             end
 
-            -- TODO: This should be with trackPlayCount:
             if effect_amount == "01" and patternPlayCount ~= 0 then
               column:clear()
             end
 
-            -- TODO: This should be with trackPlayCount:
             local length = tonumber(effect_amount:sub(1, 1))
             local modulo = tonumber(effect_amount:sub(2, 2))
             if patternPlayCount % length ~= modulo - 1 then
@@ -301,7 +317,6 @@ updatePattern = function()
           
           -- Inversed Trigger:
           elseif effect_number == "LI" then
-            -- TODO: This should be with trackPlayCount:
             local length = tonumber(effect_amount:sub(1, 1))
             local modulo = tonumber(effect_amount:sub(2, 2))
             if patternPlayCount % length == modulo - 1 then
@@ -310,7 +325,6 @@ updatePattern = function()
           
           -- Start column muted, and provide functionality for auto-unmute:
           elseif effect_number == "LM" then
-            -- TODO: This should be with trackPlayCount:
             if patternPlayCount == 0 then
               song.tracks[t]:set_column_is_muted(c, true)
             end
@@ -323,6 +337,11 @@ updatePattern = function()
         end        
       end
     end
+  end
+
+  -- Benchmark:
+  if benchmark == true then
+    print(string.format("updatePattern() - elapsed time: %.2f\n", os.clock() - time))
   end
 end
 

@@ -78,6 +78,8 @@ This is a rough lists of ideas that I want to add to this plugin in the future:
     - UI should indicate how many rotations are left.
     - Suggestion: `LP04` = 4 plays
 
-## Known issues
+## Known issues & limitations
 
 - Things break when loading a new song while the Live dialog is open. Close the dialog before opening a new song.
+- Line effects are only measured on effect column 1
+- Fills don't work in tracks that are cut with the `LC` command
