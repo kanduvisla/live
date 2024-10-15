@@ -51,6 +51,8 @@ This tool adds the following effects to the pattern editor:
 - The following effects are applicable to **only tracks**:
     - Automatically set next pattern
         - `LNxx`    : Go to pattern `xx` (in dec)
+    - Set pattern play count
+        - `LPxx`    : Set pattern play count to `xx` (transitions will be triggered in the last count)
 
 ## Ideas
 

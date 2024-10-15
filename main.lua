@@ -14,14 +14,14 @@ local currLine = 0
 local prevLine = -1
 local currPattern = doc.ObservableNumber(0)
 local nextPattern = doc.ObservableNumber(1)
-local patternPlayCount = 0
+local patternPlayCount = {} -- Keep play count on a per-pattern basis
 
 reset = function()
   currLine = 0
   prevLine = -1
   currPattern.value = 0
   nextPattern.value = 1
-  patternPlayCount = 0
+  patternPlayCount = {}
 end
 
 -- Pattern indicator
@@ -125,11 +125,10 @@ setupPattern = function()
     local src = song:pattern(nextPattern.value + 1)
     dst.number_of_lines = src.number_of_lines
     dst:copy_from(src)
-    -- Hook into here to add custom trig conditions
-    patternPlayCount = 0
 
-    -- O = modulo, for example 001 = every loop, 002, every 2nd loop, 003 = every 3rd, etc.
+    patternPlayCount = {}
     currPattern.value = nextPattern.value
+
     updatePattern()
     updatePatternIndicator()
   else
