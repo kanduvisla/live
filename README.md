@@ -49,7 +49,9 @@ This tool adds the following effects to the pattern editor:
     - Set pattern play count
         - `LPxx` : Set pattern play count to `xx` (transitions will be triggered in the last count). When a next pattern is queued, the current pattern plays a full `xx` runs. For example: a 16-bar pattern with `LP04` will always play in sets of 4, but you can already queue it on the first run. Fills will be triggered in the last run.
     - Cutoff pattern (useful to generate polyrhythms)
-        - `LC00` : Cut off (and repeat) the pattern from this point. This is up to but not included, so a cut on line 4 would repeat lines 1,2 and 3; effectively creating a [polyrhythm](https://en.wikipedia.org/wiki/Polyrhythm). Triggs (`LT`) and inverted triggs (`LI`) are supported; fills (`LF`) and muting (`LM`) are not.
+        - `LC00` : Cut off (and repeat) the pattern from this point. This is up to but not included, so a cut on line 4 would repeat lines 1,2 and 3; effectively creating a [polyrhythm](https://en.wikipedia.org/wiki/Polyrhythm). 
+            - Triggs (`LT`) and inverted triggs (`LI`) are supported when a track uses `LC`
+            - Fills (`LF`) and muting (`LM`) are not supported when a track uses `LC`
 
 ## Ideas
 
