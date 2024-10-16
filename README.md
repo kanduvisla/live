@@ -68,6 +68,7 @@ This is a rough lists of ideas that I want to add to this plugin in the future:
 - Add trig condition that doesn't plays on the first pattern after a fill
     - suggestion: `LF03`
 - Stutter / randomize track
+- Muting Groups - where you can mute/unmute multiple tracks at once
 
 ## Known issues & limitations
 
