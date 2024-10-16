@@ -20,7 +20,7 @@ This basically means that you need to use Renoise in a slightly different way th
 
 - Don't put stuff in pattern 0: it **will** get overwritten by this tool.
 - It's pretty useless to play a pattern outside of the live tool, because the `Lxxx`-conditions are only triggered when you start your project from the Live-tool (e.g. all notes will be triggered at once).
-- It **is** possible to live edit: just start the live tool, navigate to the pattern you want to edit and start editing. Just be aware that at all times it's pattern 0 that is playing, and your work will only be copy/pasted/processed to pattern 0 the moment the pattern stops.
+- It **is** possible to live edit: just start the live tool, navigate to the pattern you want to edit and start editing. Just be aware that at all times it's pattern 0 that is playing, and your work will only be copy/pasted/processed to pattern 0 the moment the pattern has finished a cycle (e.g. played it's last note and goes back to note 1).
 
 ## Features
 
