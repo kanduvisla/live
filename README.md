@@ -28,6 +28,8 @@ This tool adds the following effects to the pattern editor:
 
 - The following effects are applicable to both **columns** and **tracks**:
     - Note triggers
+        - 1st pattern only
+            `LT01`
         - !1st pattern only
             `LT00`
         - nth pattern only
@@ -45,12 +47,16 @@ This tool adds the following effects to the pattern editor:
             `LF00`
         - Only play when transitioning to another pattern
             `LF01`
-    - Start column/track muted
+    - Start muted
         - `LM00`
         - `LMxx`    : Unmute after `xx` runs (in dec)
 - The following effects are applicable to **only tracks**:
     - Automatically set next pattern
         - `LNxx`    : Go to pattern `xx` (in dec)
+    - Set pattern play count
+        - `LPxx`    : Set pattern play count to `xx` (transitions will be triggered in the last count)
+    - Cutoff pattern (generate polyrhythm)
+        - `LC00`    : Cut off (and repeat) the pattern from this point. This is up to but not included, so a cut on line 4 would repeat lines 1,2 and 3; effectively creating a [polyrhythm](https://en.wikipedia.org/wiki/Polyrhythm). Triggs (`LT`) and inverted triggs (`LI`) are supported; fills (`LF`) and muting (`LM`) are not.
 
 ## Ideas
 
@@ -67,15 +73,17 @@ This is a rough lists of ideas that I want to add to this plugin in the future:
 - Add trig condition that doesn't plays on the first pattern after a fill
     - suggestion: `LF03`
 - Stutter / randomize track
-- Have tracks of different length
-    - Due to the way how Renoise works, the pattern length will always be the length, but adding a cutoff-point can make this work. 
-    - Suggestion: `LC00`.
 - Set pattern play count
     - When a next pattern is queued, make sure that the pattern plays a full x cycles. For example: a 16-bar pattern you might always want to play 4 times, but you already want to queue it on the first play.
     - Fill will be triggered in the last rotation.
     - UI should indicate how many rotations are left.
     - Suggestion: `LP04` = 4 plays
 
-## Known issues
+## Known issues & limitations
 
 - Things break when loading a new song while the Live dialog is open. Close the dialog before opening a new song.
+- Line effects are only measured on effect column 1
+- Fills don't work in tracks that are cut with the `LC` command
+- Muting in tracks don't work in tracks that are cut with the `LC` command
+- When live-editing a track with a `LC` command, funky things will happen due to the virtual counting.
+- Possibly a Renoise bug, but when you delete an effect from a track, the `L` in the FX column changes (to a `K` for example).
