@@ -1,6 +1,7 @@
 require("includes/track_play_count")
 require("includes/note_triggers")
 require("includes/cutoff_points")
+require("includes/fill")
 
 -- Some basic vars for reuse:
 local app = renoise.app()
@@ -20,7 +21,8 @@ local prevLine = -1
 local currPattern = doc.ObservableNumber(0)
 local nextPattern = doc.ObservableNumber(1)
 local patternPlayCount = 0
-local trackLengths = {}   -- Remember the individual lengths of tracks
+local patternSetCount = 1   -- How many patterns in a "set"
+local trackLengths = {}     -- Remember the individual lengths of tracks
 
 reset = function()
   currLine = 0
@@ -28,6 +30,7 @@ reset = function()
   currPattern.value = 0
   nextPattern.value = 1
   patternPlayCount = 0
+  patternSetCount = 1
   trackLengths = {}
 end
 
@@ -44,12 +47,19 @@ local patternIndicatorView = vbp:text {
 updatePatternIndicator = function()
   if currPattern.value ~= nextPattern.value then
     patternIndicatorView.text = string.format(
-      "%s → %s", 
+      "%s → %s (%s/%s)", 
       currPattern.value,
-      nextPattern.value
+      nextPattern.value,
+      (patternPlayCount % patternSetCount) + 1,
+      patternSetCount
     )
   else 
-    patternIndicatorView.text = string.format("%s", currPattern.value)
+    patternIndicatorView.text = string.format(
+      "%s (%s/%s)", 
+      currPattern.value,
+      (patternPlayCount % patternSetCount) + 1,
+      patternSetCount
+    )
   end
 end
 
@@ -69,6 +79,8 @@ local dialog = vbp:column {
       vbp:text { text = "LNxx - Set next pattern to play to xx" },
       vbp:text { text = "LTxy - Trig (00=1st, 01=!1st, x mod y)" },
       vbp:text { text = "LIxy - Inverse Trig (x mod y)" },
+      vbp:text { text = "LC00 - Cut pattern" },
+      vbp:text { text = "LPxx - Set pattern plays to xx" },
     },
     vbp:button {
       text = "Play",
@@ -128,7 +140,7 @@ local dialog = vbp:column {
 -- Setup pattern, this is called every time a new pattern begins
 setupPattern = function()
   local dst = song:pattern(1)
-  if nextPattern.value ~= currPattern.value then
+  if nextPattern.value ~= currPattern.value and (patternPlayCount + 1) % patternSetCount == 0 then
     -- Prepare a new pattern
     local src = song:pattern(nextPattern.value + 1)
     dst.number_of_lines = src.number_of_lines
@@ -136,6 +148,8 @@ setupPattern = function()
 
     -- Reset the count:
     patternPlayCount = 0
+    patternSetCount = 1
+    
     for t=1, #dst.tracks do
       -- Only for note tracks
       if song.tracks[t].type == 1 then
@@ -151,6 +165,9 @@ setupPattern = function()
     patternPlayCount = patternPlayCount + 1
     -- Update track play count
     updatePattern()
+    if patternSetCount > 1 then
+      updatePatternIndicator()
+    end
   end
 end
 
@@ -199,14 +216,10 @@ updatePattern = function()
   
           -- Fill:
           if effect.number_string == "LF" then
-            -- Remove the not playing ones:
-            -- TODO: Check if this is correct:
-            if nextPattern.value ~= currPattern.value and effect.amount_string == "01" then
-              line:clear()
-            elseif nextPattern.value == currPattern.value and effect.amount_string == "00" then
+            if not is_fill(currPattern.value, nextPattern.value, patternPlayCount, patternSetCount, effect.amount_string) then
               line:clear()
             end
-          
+            
           -- Auto-queue next pattern:
           elseif effect.number_string == "LN" then
             if nextPattern.value == currPattern.value then
@@ -233,6 +246,8 @@ updatePattern = function()
                 song.tracks[t]:unmute()
               end
             end
+          elseif effect.number_string == "LP" then
+            patternSetCount = tonumber(effect.amount_string)
           end
   
           -- Check for column effects (the apply to a single column):
@@ -243,11 +258,7 @@ updatePattern = function()
             local effect_amount = column.effect_amount_string
             -- Fill:
             if effect_number == "LF" then
-              -- Remove the not playing ones:
-              -- TODO: Check if this is correct:
-              if nextPattern.value ~= currPattern.value and effect_amount == "01" then
-                column:clear()
-              elseif nextPattern.value == currPattern.value and effect_amount == "00" then
+              if not is_fill(currPattern.value, nextPattern.value, patternPlayCount, patternSetCount, effect_amount) then
                 column:clear()
               end
             
