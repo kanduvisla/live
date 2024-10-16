@@ -8,7 +8,7 @@ local app = renoise.app()
 local tool = renoise.tool()
 local song = nil
 local doc = renoise.Document
-local benchmark = true   -- Output benchmarking information to the console, for dev purposes
+local benchmark = false   -- Output benchmarking information to the console, for dev purposes
 
 -- View Builder for preferences and set scale
 local vbp = renoise.ViewBuilder()
@@ -68,6 +68,29 @@ end
 
 nextPattern:add_notifier(updatePatternIndicator)
 
+-- Queue the next pattern
+local queue_next_pattern = function()
+  if nextPattern.value < song.transport.song_length.sequence - 1 then
+    nextPattern.value = nextPattern.value + 1
+    updatePattern()
+  end
+end
+
+-- Queue the previous pattern
+local queue_previous_pattern = function()
+  if nextPattern.value > 1 then
+    nextPattern.value = nextPattern.value - 1
+    updatePattern()
+  end
+end
+
+-- Trigger a fill
+local trigger_fill = function()
+  userInitiatedFill = true
+  updatePatternIndicator()
+  updatePattern()   
+end
+
 local dialog = vbp:column {
   margin = 1,
   vbp:horizontal_aligner {
@@ -118,34 +141,20 @@ local dialog = vbp:column {
       text = "Prev",
       width = 50,
       height = 50,
-      pressed = function()
-        if nextPattern.value > 1 then
-          nextPattern.value = nextPattern.value - 1
-          updatePattern()
-        end
-      end
+      pressed = queue_previous_pattern
     },
     patternIndicatorView,
     vbp:button {
       text = "Next",
       width = 50,
       height = 50,
-      pressed = function()
-        if nextPattern.value < song.transport.song_length.sequence - 1 then
-          nextPattern.value = nextPattern.value + 1
-          updatePattern()
-        end
-      end
+      pressed = queue_next_pattern
     },
     vbp:button {
       text = "Fill",
       width = 50,
       height = 50,
-      pressed = function()
-        userInitiatedFill = true
-        updatePatternIndicator()
-        updatePattern()        
-      end
+      pressed = trigger_fill
     }
   }
 }
@@ -355,6 +364,19 @@ local function idleObserver()
   end
 end
 
+-- Function to handle key presses
+local function key_handler(dialog, key)
+  if key.name == "left" then
+   queue_previous_pattern()
+  elseif key.name == "right" then
+    queue_next_pattern()
+  elseif key.name == "f" then
+    trigger_fill()
+  elseif key.name == "esc" then
+    dialog:close()
+  end
+end
+
 -- Main window
 showMainWindow = function()
   if song == nil then
@@ -373,7 +395,7 @@ showMainWindow = function()
   reset()
   
   -- Show dialog:
-  app:show_custom_dialog("Live", dialog)
+  app:show_custom_dialog("Live", dialog, key_handler)
  
   setupPattern()
 end
@@ -390,3 +412,4 @@ tool:add_menu_entry {
     showMainWindow()
   end
 }
+
