@@ -1,12 +1,12 @@
-require("includes/track_play_count.lua")
-require("includes/note_triggers.lua")
+require("includes/track_play_count")
+require("includes/note_triggers")
 
 -- Some basic vars for reuse:
 local app = renoise.app()
 local tool = renoise.tool()
 local song = nil
 local doc = renoise.Document
-local benchmark = false   -- Output benchmarking information to the console, for dev purposes
+local benchmark = true   -- Output benchmarking information to the console, for dev purposes
 
 -- View Builder for preferences and set scale
 local vbp = renoise.ViewBuilder()
@@ -138,10 +138,10 @@ setupPattern = function()
     for t=1, #dst.tracks do
       -- Only for note tracks
       if song.tracks[t].type == 1 then
-        trackLengths[t] = get_track_length(song.tracks[t])
+        trackLengths[t] = getPatternTrackLength(dst:track(t))
       end
     end
-
+    
     currPattern.value = nextPattern.value
 
     updatePattern()
@@ -154,15 +154,15 @@ setupPattern = function()
 end
 
 -- Get the length of an individual track (based on it's cutoff point)
-get_track_length = function(track)
+getPatternTrackLength = function(patternTrack)
   local dst = song:pattern(1)
   local number_of_lines = dst.number_of_lines
   for l=1, number_of_lines do
-    local line = track.lines[l]
+    local line = patternTrack:line(l)
     local effect = line:effect_column(1)
     if effect.number_string == "LC" then
       -- Cut!
-      return l
+      return l - 1
     end
   end
   return number_of_lines
@@ -170,9 +170,10 @@ end
 
 -- Check for transition fills. These are triggered when a transition is going to happen from one pattern to the other
 updatePattern = function()
-  -- Benchmark:
+  -- Benchmark
+  local time
   if benchmark == true then
-    local time = os.clock()
+    time = os.clock()
   end
 
   -- TODO: refactor this whole function in multiple - testable functions
@@ -185,6 +186,8 @@ updatePattern = function()
   for t=1, #dst.tracks do
     -- Only for note tracks
     if song.tracks[t].type == 1 then
+      -- TODO: Do a separate iteration for the "LC" effect.
+      
       for l=1, dst.number_of_lines do
         -- Check for filter
         local line = dst.tracks[t].lines[l]
@@ -196,45 +199,67 @@ updatePattern = function()
         if effect.number_string == "LC" then
           -- A cutoff point indicates a place in the track where a selection needs to be copy/pasted.
           -- This means we "fill" the pattern with everything that is above the LC, and keep track of how many
-          -- times it has already copied to keep the remainder in mind:
-          for fl=1, l do
-            -- How many times does this pattern "fit" in this track:
-            local duplicationCount = math.ceil(dst.number_of_lines / trackLengths[t])
+          -- times it has already copied to keep the remainder in mind.
+          
+          -- How many times does this pattern "fit" in this track:
+          local duplicationCount = math.ceil(dst.number_of_lines / trackLengths[t])
+          print("track length: " .. trackLengths[t])
+          print("duplication count: " .. duplicationCount)
+          
+          -- Copy from first line up until the line with the "LC" effectL
+          for fl=1, l - 1 do
             -- Offset from the previous iteration:
             local offset = 0
             if patternPlayCount > 0 then
               offset = (patternPlayCount * dst.number_of_lines) % trackLengths[t]
             end
             for d=1, duplicationCount do
-              local dstLine = fl + (trackLengths[t] * (duplicationCount - 1)) - offset
-              if dstLine < dst.number_of_lines and dstLine > 0 then
+              local dstLine = fl + (trackLengths[t] * (d - 1)) - offset
+              if dstLine <= dst.number_of_lines and dstLine > 0 then
+                print("duplicate line " .. fl .. " to " .. dstLine)
                 -- Check for trigs:
 
                 -- A virtual count to see how many times this track has played
                 -- This is used to determine if trigs need to be added:
                 local dstTrackPlayCount = math.floor(((patternPlayCount * dst.number_of_lines) + dstLine) / trackLengths[t])
+                print("virtual track play count: " .. dstTrackPlayCount)
+                
                 local srcLine = src.tracks[t]:line(fl)
                 local lineEffect = srcLine:effect_column(1)
+                print("line effect on line " .. fl .. ": " .. lineEffect.amount_string)
                 
                 -- Fill:
                 if lineEffect.number_string == "LF" then
-                  -- TODO, how to do this with polyrhythm?
+                  -- TODO, how to do fills with polyrhythm?
                 elseif lineEffect.number_string == "LT" then
                   -- Trigger:
                   if is_trig_active(lineEffect.amount_string, dstTrackPlayCount) then
                     dst.tracks[t]:line(dstLine):copy_from(srcLine)
+                    -- Remove effect:
+                    dst.tracks[t]:line(dstLine):effect_column(1):clear()
+                    print("trig is true")
+                  else
+                    print("trig is false")
                   end
                 elseif lineEffect.number_string == "LI" then
                   -- Inverse Trigger:
                   if not is_trig_active(lineEffect.amount_string, dstTrackPlayCount) then
                     dst.tracks[t]:line(dstLine):copy_from(srcLine)
                   end
+                else
+                  -- No Live effect, just copy the line:
+                  dst.tracks[t]:line(dstLine):copy_from(srcLine)
                 end
 
                 -- TODO: columns
-              end
-            end
-          end
+              end -- end if
+            end -- end for
+          end -- end for
+          
+          -- TODO: The "LC" check needs to be done outside of the main loop, otherwise triggs will be re-triggered
+          -- We change the value of 'l' to the total number of lines, effectively breaking the for-loop
+          -- For some reason, lua's 'goto' does not work in Renoise lua scripting
+          l = dst.number_of_lines
 
         -- Fill:
         elseif effect.number_string == "LF" then
@@ -310,15 +335,19 @@ updatePattern = function()
                 song.tracks[t]:set_column_is_muted(c, false)
               end
             end
-          end
-        end        
-      end
-    end
-  end
+          end -- end if
+          
+        end -- end for#columns        
+      end -- end for#lines
+    end -- end if
+  end -- end for#tracks
 
   -- Benchmark:
   if benchmark == true then
-    print(string.format("updatePattern() - elapsed time: %.2f\n", os.clock() - time))
+    -- For reference:
+    -- At 140 BPM, 1 step (1/16th note) is approximately 107.14 milliseconds.
+    -- So if this script performs well under that it's ok
+    print(string.format("updatePattern() - function elapsed time: %.4f\n", os.clock() - time))
   end
 end
 
@@ -326,9 +355,20 @@ end
 local function stepNotifier()  
   -- Check for pattern change:
   if currLine == song.patterns[1].number_of_lines then
+    -- Benchmark
+    local time
+    if benchmark == true then
+      time = os.clock()
+    end
     -- Change patterns:
     setupPattern()
-  end
+    if benchmark == true then
+      -- For reference:
+      -- At 140 BPM, 1 step (1/16th note) is approximately 107.14 milliseconds.
+      -- So if this script performs well under that it's ok
+      print(string.format("stepNotifier() - total elapsed time: %.4f\n", os.clock() - time))
+    end
+    end
 end
 
 -- Idle observer
@@ -339,7 +379,7 @@ local function idleObserver()
       stepNotifier()
       prevLine = currLine
     end
-    end
+  end
 end
 
 -- Main window
