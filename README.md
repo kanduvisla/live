@@ -29,24 +29,24 @@ This tool adds the following effects to the pattern editor:
 - The following effects are applicable to both **columns** and **tracks**:
     - Note triggers
         - 1st pattern only
-            `LT01`
+            - `LT01`
         - !1st pattern only
-            `LT00`
+            - `LT00`
         - nth pattern only
-            `LTn0`
+            - `LTn0`
         - Play every xth pattern after y runs
-            `LTyx`
-            `LT21`  : Triggers the first pattern after 2 runs (`2:1`)
-            `LT33`  : Triggers the third pattern after 3 runs (`3:3`)
+            - `LTyx`
+            - `LT21` : Play the note on run 1, but not run 2 (`2:1`)
+            - `LT33` : Play the note on run 3, but not on 1 and 2 (`3:3`)
         - Inverted (Don't play every xth pattern after y runs)
-            `LIyx`
-            `LI21`  : Triggers the first pattern after 2 runs (`2:1`)
-            `LI33`  : Triggers the third pattern after 3 runs (`3:3`)
+            - `LIyx`
+            - `LI41` : Play the note on run 2, 3 and 4, but not on 1 (`4:1`)
+            - `LI33` : Play the note on run 1 and 2, but not 3 (`3:3`)
     - Fills
         - Only play when not having a fill
-            `LF00`
+            - `LF00`
         - Only play when transitioning to another pattern
-            `LF01`
+            - `LF01`
     - Start muted
         - `LM00`
         - `LMxx`    : Unmute after `xx` runs (in dec)
