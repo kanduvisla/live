@@ -11,7 +11,7 @@ process_cutoff_points = function(t, dstPattern, srcPattern, song, trackLengths, 
       -- times it has already copied to keep the remainder in mind.
       
       -- How many times does this pattern "fit" in this track:
-      local duplicationCount = math.ceil(numberOfLines / trackLengths[t])
+      local duplicationCount = math.ceil(numberOfLines / trackLengths[t]) + 1
       
       -- Copy from first line up until the line with the "LC" effectL
       for fl=1, l - 1 do
@@ -51,7 +51,28 @@ process_cutoff_points = function(t, dstPattern, srcPattern, song, trackLengths, 
               dstTrack:line(dstLine):copy_from(srcLine)
             end
 
-            -- TODO: columns
+            -- Check for column effects (the apply to a single column):
+            local line = dstTrack:line(dstLine)
+            local columns = line.note_columns
+            for c=1, #columns do
+              local column = line:note_column(c)
+              local effect_number = column.effect_number_string
+              local effect_amount = column.effect_amount_string
+              -- Fill:
+              if effect_number == "LF" then
+                -- TODO, how to do fills with polyrhythm?              
+              elseif effect_number == "LT" then
+                if not is_trig_active(effect_amount, virtualTrackPlayCount) then
+                  column:clear()
+                end
+              -- Inversed Trigger:
+              elseif effect_number == "LI" then
+                if is_trig_active(effect_amount, virtualTrackPlayCount) then
+                  column:clear()
+                end          
+              end -- end if
+              
+            end -- end for#columns
           end -- end if#line<>
         end -- end for#duplicationCount
       end -- end for#fl

@@ -1,6 +1,7 @@
 require("includes/track_play_count")
 require("includes/note_triggers")
 require("includes/cutoff_points")
+require("includes/fill")
 
 -- Some basic vars for reuse:
 local app = renoise.app()
@@ -20,7 +21,9 @@ local prevLine = -1
 local currPattern = doc.ObservableNumber(0)
 local nextPattern = doc.ObservableNumber(1)
 local patternPlayCount = 0
-local trackLengths = {}   -- Remember the individual lengths of tracks
+local patternSetCount = 1   -- How many patterns in a "set"
+local trackLengths = {}     -- Remember the individual lengths of tracks
+local userInitiatedFill = false
 
 reset = function()
   currLine = 0
@@ -28,7 +31,9 @@ reset = function()
   currPattern.value = 0
   nextPattern.value = 1
   patternPlayCount = 0
+  patternSetCount = 1
   trackLengths = {}
+  userInitiatedFill = false
 end
 
 -- Pattern indicator
@@ -44,16 +49,47 @@ local patternIndicatorView = vbp:text {
 updatePatternIndicator = function()
   if currPattern.value ~= nextPattern.value then
     patternIndicatorView.text = string.format(
-      "%s → %s", 
+      "%s → %s (%s/%s)", 
       currPattern.value,
-      nextPattern.value
+      nextPattern.value,
+      (patternPlayCount % patternSetCount) + 1,
+      patternSetCount
     )
   else 
-    patternIndicatorView.text = string.format("%s", currPattern.value)
+    patternIndicatorView.text = string.format(
+      "%s (%s/%s)%s", 
+      currPattern.value,
+      (patternPlayCount % patternSetCount) + 1,
+      patternSetCount,
+      userInitiatedFill and " (F)" or ""
+    )
   end
 end
 
 nextPattern:add_notifier(updatePatternIndicator)
+
+-- Queue the next pattern
+local queue_next_pattern = function()
+  if nextPattern.value < song.transport.song_length.sequence - 1 then
+    nextPattern.value = nextPattern.value + 1
+    updatePattern()
+  end
+end
+
+-- Queue the previous pattern
+local queue_previous_pattern = function()
+  if nextPattern.value > 1 then
+    nextPattern.value = nextPattern.value - 1
+    updatePattern()
+  end
+end
+
+-- Trigger a fill
+local trigger_fill = function()
+  userInitiatedFill = true
+  updatePatternIndicator()
+  updatePattern()   
+end
 
 local dialog = vbp:column {
   margin = 1,
@@ -69,6 +105,8 @@ local dialog = vbp:column {
       vbp:text { text = "LNxx - Set next pattern to play to xx" },
       vbp:text { text = "LTxy - Trig (00=1st, 01=!1st, x mod y)" },
       vbp:text { text = "LIxy - Inverse Trig (x mod y)" },
+      vbp:text { text = "LC00 - Cut pattern" },
+      vbp:text { text = "LPxx - Set pattern plays to xx" },
     },
     vbp:button {
       text = "Play",
@@ -103,24 +141,20 @@ local dialog = vbp:column {
       text = "Prev",
       width = 50,
       height = 50,
-      pressed = function()
-        if nextPattern.value > 1 then
-          nextPattern.value = nextPattern.value - 1
-          updatePattern()
-        end
-      end
+      pressed = queue_previous_pattern
     },
     patternIndicatorView,
     vbp:button {
       text = "Next",
       width = 50,
       height = 50,
-      pressed = function()
-        if nextPattern.value < song.transport.song_length.sequence - 1 then
-          nextPattern.value = nextPattern.value + 1
-          updatePattern()
-        end
-      end
+      pressed = queue_next_pattern
+    },
+    vbp:button {
+      text = "Fill",
+      width = 50,
+      height = 50,
+      pressed = trigger_fill
     }
   }
 }
@@ -128,14 +162,17 @@ local dialog = vbp:column {
 -- Setup pattern, this is called every time a new pattern begins
 setupPattern = function()
   local dst = song:pattern(1)
-  if nextPattern.value ~= currPattern.value then
+  if nextPattern.value ~= currPattern.value and (patternPlayCount + 1) % patternSetCount == 0 then
     -- Prepare a new pattern
     local src = song:pattern(nextPattern.value + 1)
     dst.number_of_lines = src.number_of_lines
     dst:copy_from(src)
 
-    -- Reset the count:
+    -- Reset some stuff:
     patternPlayCount = 0
+    patternSetCount = 1
+    userInitiatedFill = false
+    
     for t=1, #dst.tracks do
       -- Only for note tracks
       if song.tracks[t].type == 1 then
@@ -148,9 +185,19 @@ setupPattern = function()
     updatePattern()
     updatePatternIndicator()
   else
+    -- Update play count
     patternPlayCount = patternPlayCount + 1
-    -- Update track play count
+    
+    -- If we're back at the start, the user initiated fill needs to be reset:
+    if patternPlayCount % patternSetCount == 0 then
+      userInitiatedFill = false
+    end
+    
+    -- Update pattern
     updatePattern()
+    if patternSetCount > 1 then
+      updatePatternIndicator()
+    end
   end
 end
 
@@ -192,25 +239,21 @@ updatePattern = function()
         -- Usual filtering:
         for l=1, dst.number_of_lines do
           -- Check for filter
-          local line = dst.tracks[t].lines[l]
+          local line = dst:track(t):line(l)
   
           -- Check for track effect (these apply to the whole line):
           local effect = line:effect_column(1)
   
           -- Fill:
           if effect.number_string == "LF" then
-            -- Remove the not playing ones:
-            -- TODO: Check if this is correct:
-            if nextPattern.value ~= currPattern.value and effect.amount_string == "01" then
-              line:clear()
-            elseif nextPattern.value == currPattern.value and effect.amount_string == "00" then
+            if not is_fill(currPattern.value, nextPattern.value, patternPlayCount, patternSetCount, effect.amount_string, userInitiatedFill) then
               line:clear()
             end
-          
+            
           -- Auto-queue next pattern:
           elseif effect.number_string == "LN" then
             if nextPattern.value == currPattern.value then
-              nextPattern.value = effect.amount_value
+              nextPattern.value = tonumber(effect.amount_value)
             end
           
           -- Trigger:
@@ -233,6 +276,8 @@ updatePattern = function()
                 song.tracks[t]:unmute()
               end
             end
+          elseif effect.number_string == "LP" then
+            patternSetCount = tonumber(effect.amount_string)
           end
   
           -- Check for column effects (the apply to a single column):
@@ -243,11 +288,7 @@ updatePattern = function()
             local effect_amount = column.effect_amount_string
             -- Fill:
             if effect_number == "LF" then
-              -- Remove the not playing ones:
-              -- TODO: Check if this is correct:
-              if nextPattern.value ~= currPattern.value and effect_amount == "01" then
-                column:clear()
-              elseif nextPattern.value == currPattern.value and effect_amount == "00" then
+              if not is_fill(currPattern.value, nextPattern.value, patternPlayCount, patternSetCount, effect_amount, userInitiatedFill) then
                 column:clear()
               end
             
@@ -293,9 +334,13 @@ local function processCutoffPoints()
 end
 
 -- Add notifier each time the loop ends:
-local function stepNotifier()  
+local function stepNotifier()
   -- Check for pattern change:
-  if currLine == song.patterns[1].number_of_lines then
+  if currLine == song.patterns[1].number_of_lines - 1 then
+    if currPattern.value ~= nextPattern.value then
+      -- Add a "ZB00" the the last line of the master track, so the next pattern will start at 0
+    end
+  elseif currLine == song.patterns[1].number_of_lines then
     -- Benchmark
     local time
     if benchmark == true then
@@ -323,6 +368,19 @@ local function idleObserver()
   end
 end
 
+-- Function to handle key presses
+local function key_handler(dialog, key)
+  if key.name == "left" then
+   queue_previous_pattern()
+  elseif key.name == "right" then
+    queue_next_pattern()
+  elseif key.name == "f" then
+    trigger_fill()
+  elseif key.name == "esc" then
+    dialog:close()
+  end
+end
+
 -- Main window
 showMainWindow = function()
   if song == nil then
@@ -341,7 +399,7 @@ showMainWindow = function()
   reset()
   
   -- Show dialog:
-  app:show_custom_dialog("Live", dialog)
+  app:show_custom_dialog("Live", dialog, key_handler)
  
   setupPattern()
 end
@@ -358,3 +416,4 @@ tool:add_menu_entry {
     showMainWindow()
   end
 }
+
