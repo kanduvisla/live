@@ -28,35 +28,28 @@ This tool adds the following effects to the pattern editor:
 
 - The following effects are applicable to both **columns** and **tracks**:
     - Note triggers
-        - 1st pattern only
-            - `LT01`
-        - !1st pattern only
-            - `LT00`
-        - nth pattern only
-            - `LTn0`
-        - Play every xth pattern after y runs
-            - `LTyx`
+        - `LT01` : Only play the first run of this pattern.
+        - `LT00` : Don't play the first run of this pattern.
+        - `LTn0` : Only play the nth run of this pattern.
+        - `LTyx` : Play every xth pattern after y runs. Some examples:
             - `LT21` : Play the note on run 1, but not run 2 (`2:1`)
             - `LT33` : Play the note on run 3, but not on 1 and 2 (`3:3`)
-        - Inverted (Don't play every xth pattern after y runs)
-            - `LIyx`
+        - `LIyx` : Inverted trigger (Don't play every xth pattern after y runs). Some examples:
             - `LI41` : Play the note on run 2, 3 and 4, but not on 1 (`4:1`)
             - `LI33` : Play the note on run 1 and 2, but not 3 (`3:3`)
     - Fills
-        - Only play when not having a fill
-            - `LF00`
-        - Only play when transitioning to another pattern
-            - `LF01`
-    - Start muted
-        - `LM00`
-        - `LMxx`    : Unmute after `xx` runs (in dec)
+        - `LF00` : Only play when not having a fill/transition to another pattern
+        - `LF01` : Only play when having a fill/transition to another pattern
+    - Muting
+        - `LM00` : Start track muted
+        - `LMxx` : Unmute after `xx` runs (in dec)
 - The following effects are applicable to **only tracks**:
     - Automatically set next pattern
-        - `LNxx`    : Go to pattern `xx` (in dec)
+        - `LNxx` : Set pattern `xx` (in dec) to be the next one in the queue.
     - Set pattern play count
-        - `LPxx`    : Set pattern play count to `xx` (transitions will be triggered in the last count)
-    - Cutoff pattern (generate polyrhythm)
-        - `LC00`    : Cut off (and repeat) the pattern from this point. This is up to but not included, so a cut on line 4 would repeat lines 1,2 and 3; effectively creating a [polyrhythm](https://en.wikipedia.org/wiki/Polyrhythm). Triggs (`LT`) and inverted triggs (`LI`) are supported; fills (`LF`) and muting (`LM`) are not.
+        - `LPxx` : Set pattern play count to `xx` (transitions will be triggered in the last count). When a next pattern is queued, the current pattern plays a full `xx` runs. For example: a 16-bar pattern with `LP04` will always play in sets of 4, but you can already queue it on the first run. Fills will be triggered in the last run.
+    - Cutoff pattern (useful to generate polyrhythms)
+        - `LC00` : Cut off (and repeat) the pattern from this point. This is up to but not included, so a cut on line 4 would repeat lines 1,2 and 3; effectively creating a [polyrhythm](https://en.wikipedia.org/wiki/Polyrhythm). Triggs (`LT`) and inverted triggs (`LI`) are supported; fills (`LF`) and muting (`LM`) are not.
 
 ## Ideas
 
@@ -73,11 +66,6 @@ This is a rough lists of ideas that I want to add to this plugin in the future:
 - Add trig condition that doesn't plays on the first pattern after a fill
     - suggestion: `LF03`
 - Stutter / randomize track
-- Set pattern play count
-    - When a next pattern is queued, make sure that the pattern plays a full x cycles. For example: a 16-bar pattern you might always want to play 4 times, but you already want to queue it on the first play.
-    - Fill will be triggered in the last rotation.
-    - UI should indicate how many rotations are left.
-    - Suggestion: `LP04` = 4 plays
 
 ## Known issues & limitations
 
