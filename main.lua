@@ -23,6 +23,7 @@ local nextPattern = doc.ObservableNumber(1)
 local patternPlayCount = 0
 local patternSetCount = 1   -- How many patterns in a "set"
 local trackLengths = {}     -- Remember the individual lengths of tracks
+local userInitiatedFill = false
 
 reset = function()
   currLine = 0
@@ -32,6 +33,7 @@ reset = function()
   patternPlayCount = 0
   patternSetCount = 1
   trackLengths = {}
+  userInitiatedFill = false
 end
 
 -- Pattern indicator
@@ -55,10 +57,11 @@ updatePatternIndicator = function()
     )
   else 
     patternIndicatorView.text = string.format(
-      "%s (%s/%s)", 
+      "%s (%s/%s)%s", 
       currPattern.value,
       (patternPlayCount % patternSetCount) + 1,
-      patternSetCount
+      patternSetCount,
+      userInitiatedFill and " (F)" or ""
     )
   end
 end
@@ -133,6 +136,16 @@ local dialog = vbp:column {
           updatePattern()
         end
       end
+    },
+    vbp:button {
+      text = "Fill",
+      width = 50,
+      height = 50,
+      pressed = function()
+        userInitiatedFill = true
+        updatePatternIndicator()
+        updatePattern()        
+      end
     }
   }
 }
@@ -146,9 +159,10 @@ setupPattern = function()
     dst.number_of_lines = src.number_of_lines
     dst:copy_from(src)
 
-    -- Reset the count:
+    -- Reset some stuff:
     patternPlayCount = 0
     patternSetCount = 1
+    userInitiatedFill = false
     
     for t=1, #dst.tracks do
       -- Only for note tracks
@@ -162,8 +176,15 @@ setupPattern = function()
     updatePattern()
     updatePatternIndicator()
   else
+    -- Update play count
     patternPlayCount = patternPlayCount + 1
-    -- Update track play count
+    
+    -- If we're back at the start, the user initiated fill needs to be reset:
+    if patternPlayCount % patternSetCount == 0 then
+      userInitiatedFill = false
+    end
+    
+    -- Update pattern
     updatePattern()
     if patternSetCount > 1 then
       updatePatternIndicator()
@@ -216,7 +237,7 @@ updatePattern = function()
   
           -- Fill:
           if effect.number_string == "LF" then
-            if not is_fill(currPattern.value, nextPattern.value, patternPlayCount, patternSetCount, effect.amount_string) then
+            if not is_fill(currPattern.value, nextPattern.value, patternPlayCount, patternSetCount, effect.amount_string, userInitiatedFill) then
               line:clear()
             end
             
@@ -258,7 +279,7 @@ updatePattern = function()
             local effect_amount = column.effect_amount_string
             -- Fill:
             if effect_number == "LF" then
-              if not is_fill(currPattern.value, nextPattern.value, patternPlayCount, patternSetCount, effect_amount) then
+              if not is_fill(currPattern.value, nextPattern.value, patternPlayCount, patternSetCount, effect_amount, userInitiatedFill) then
                 column:clear()
               end
             
