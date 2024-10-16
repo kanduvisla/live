@@ -309,7 +309,7 @@ local function stepNotifier()
       -- So if this script performs well under that it's ok
       print(string.format("stepNotifier() - total elapsed time: %.4f\n", os.clock() - time))
     end
-    end
+  end
 end
 
 -- Idle observer

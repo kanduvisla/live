@@ -20,17 +20,14 @@ process_cutoff_points = function(t, dstPattern, srcPattern, song, trackLengths, 
         for d=1, duplicationCount do
           local dstLine = fl + (trackLengths[t] * (d - 1)) - offset
           if dstLine <= numberOfLines and dstLine > 0 then
-            -- print("duplicate line " .. fl .. " to " .. dstLine)
             -- Check for trigs:
 
             -- A virtual count to see how many times this track has played
             -- This is used to determine if trigs need to be added:
             local virtualTrackPlayCount = math.floor(((patternPlayCount * numberOfLines) + dstLine - 1) / trackLengths[t])
-            -- print("virtual track play count: " .. virtualTrackPlayCount)
             
             local srcLine = srcPattern:track(t):line(fl)
             local lineEffect = srcLine:effect_column(1)
-            -- print("line effect on line " .. fl .. ": " .. lineEffect.amount_string)
             
             -- Fill:
             if lineEffect.number_string == "LF" then
@@ -39,20 +36,12 @@ process_cutoff_points = function(t, dstPattern, srcPattern, song, trackLengths, 
               -- Trigger:
               if is_trig_active(lineEffect.amount_string, virtualTrackPlayCount) then
                 dstTrack:line(dstLine):copy_from(srcLine)
-                print("trig is true for line " .. dstLine)
               else
-                print("trig is false for line " .. dstLine)
                 dstTrack:line(dstLine):clear()
               end
-              print("pattern play count: " .. patternPlayCount)
-              print("virtual track play count: " .. virtualTrackPlayCount)
             elseif lineEffect.number_string == "LI" then
               -- Inverse Trigger:
               if not is_trig_active(lineEffect.amount_string, virtualTrackPlayCount) then
-                print("trig is true for line " .. dstLine)
-                print("pattern play count: " .. patternPlayCount)
-                print("virtual track play count: " .. virtualTrackPlayCount)
-                
                 dstTrack:line(dstLine):copy_from(srcLine)                
               else
                 dstTrack:line(dstLine):clear()
