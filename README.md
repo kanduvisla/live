@@ -52,7 +52,7 @@ This tool adds the following effects to the pattern editor:
         - `LMxx`    : Unmute after `xx` runs (in dec)
 - The following effects are applicable to **only tracks**:
     - Automatically set next pattern
-        - `LNxx`    : Go to pattern `xx` (in dec)
+        - `LNxx`    : Set pattern `xx` (in dec) the next one in the queue.
     - Set pattern play count
         - `LPxx`    : Set pattern play count to `xx` (transitions will be triggered in the last count)
     - Cutoff pattern (generate polyrhythm)
@@ -73,11 +73,6 @@ This is a rough lists of ideas that I want to add to this plugin in the future:
 - Add trig condition that doesn't plays on the first pattern after a fill
     - suggestion: `LF03`
 - Stutter / randomize track
-- Set pattern play count
-    - When a next pattern is queued, make sure that the pattern plays a full x cycles. For example: a 16-bar pattern you might always want to play 4 times, but you already want to queue it on the first play.
-    - Fill will be triggered in the last rotation.
-    - UI should indicate how many rotations are left.
-    - Suggestion: `LP04` = 4 plays
 
 ## Known issues & limitations
 
