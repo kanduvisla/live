@@ -86,3 +86,4 @@ This is a rough lists of ideas that I want to add to this plugin in the future:
 - Fills don't work in tracks that are cut with the `LC` command
 - Muting in tracks don't work in tracks that are cut with the `LC` command
 - When live-editing a track with a `LC` command, funky things will happen due to the virtual counting.
+- Possibly a Renoise bug, but when you delete an effect from a track, the `L` in the FX column changes (to a `K` for example).
