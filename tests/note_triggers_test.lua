@@ -22,3 +22,10 @@ assert(is_trig_active("42", 2) == false)
 assert(is_trig_active("42", 3) == false)
 assert(is_trig_active("42", 4) == false)
 assert(is_trig_active("42", 5) == true)
+
+-- 4:4
+assert(is_trig_active("44", 0) == false)
+assert(is_trig_active("44", 1) == false)
+assert(is_trig_active("44", 2) == false)
+assert(is_trig_active("44", 3) == true)
+

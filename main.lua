@@ -1,5 +1,6 @@
 require("includes/track_play_count")
 require("includes/note_triggers")
+require("includes/cutoff_points")
 
 -- Some basic vars for reuse:
 local app = renoise.app()
@@ -186,159 +187,95 @@ updatePattern = function()
   for t=1, #dst.tracks do
     -- Only for note tracks
     if song.tracks[t].type == 1 then
-      -- TODO: Do a separate iteration for the "LC" effect.
-      
-      for l=1, dst.number_of_lines do
-        -- Check for filter
-        local line = dst.tracks[t].lines[l]
-
-        -- Check for track effect (these apply to the whole line):
-        local effect = line:effect_column(1)
-
-        -- Cutoff point:
-        if effect.number_string == "LC" then
-          -- A cutoff point indicates a place in the track where a selection needs to be copy/pasted.
-          -- This means we "fill" the pattern with everything that is above the LC, and keep track of how many
-          -- times it has already copied to keep the remainder in mind.
-          
-          -- How many times does this pattern "fit" in this track:
-          local duplicationCount = math.ceil(dst.number_of_lines / trackLengths[t])
-          print("track length: " .. trackLengths[t])
-          print("duplication count: " .. duplicationCount)
-          
-          -- Copy from first line up until the line with the "LC" effectL
-          for fl=1, l - 1 do
-            -- Offset from the previous iteration:
-            local offset = 0
-            if patternPlayCount > 0 then
-              offset = (patternPlayCount * dst.number_of_lines) % trackLengths[t]
-            end
-            for d=1, duplicationCount do
-              local dstLine = fl + (trackLengths[t] * (d - 1)) - offset
-              if dstLine <= dst.number_of_lines and dstLine > 0 then
-                print("duplicate line " .. fl .. " to " .. dstLine)
-                -- Check for trigs:
-
-                -- A virtual count to see how many times this track has played
-                -- This is used to determine if trigs need to be added:
-                local dstTrackPlayCount = math.floor(((patternPlayCount * dst.number_of_lines) + dstLine) / trackLengths[t])
-                print("virtual track play count: " .. dstTrackPlayCount)
-                
-                local srcLine = src.tracks[t]:line(fl)
-                local lineEffect = srcLine:effect_column(1)
-                print("line effect on line " .. fl .. ": " .. lineEffect.amount_string)
-                
-                -- Fill:
-                if lineEffect.number_string == "LF" then
-                  -- TODO, how to do fills with polyrhythm?
-                elseif lineEffect.number_string == "LT" then
-                  -- Trigger:
-                  if is_trig_active(lineEffect.amount_string, dstTrackPlayCount) then
-                    dst.tracks[t]:line(dstLine):copy_from(srcLine)
-                    -- Remove effect:
-                    dst.tracks[t]:line(dstLine):effect_column(1):clear()
-                    print("trig is true")
-                  else
-                    print("trig is false")
-                  end
-                elseif lineEffect.number_string == "LI" then
-                  -- Inverse Trigger:
-                  if not is_trig_active(lineEffect.amount_string, dstTrackPlayCount) then
-                    dst.tracks[t]:line(dstLine):copy_from(srcLine)
-                  end
-                else
-                  -- No Live effect, just copy the line:
-                  dst.tracks[t]:line(dstLine):copy_from(srcLine)
-                end
-
-                -- TODO: columns
-              end -- end if
-            end -- end for
-          end -- end for
-          
-          -- TODO: The "LC" check needs to be done outside of the main loop, otherwise triggs will be re-triggered
-          -- We change the value of 'l' to the total number of lines, effectively breaking the for-loop
-          -- For some reason, lua's 'goto' does not work in Renoise lua scripting
-          l = dst.number_of_lines
-
-        -- Fill:
-        elseif effect.number_string == "LF" then
-          -- Remove the not playing ones:
-          -- TODO: Check if this is correct:
-          if nextPattern.value ~= currPattern.value and effect.amount_string == "01" then
-            line:clear()
-          elseif nextPattern.value == currPattern.value and effect.amount_string == "00" then
-            line:clear()
-          end
-        
-        -- Auto-queue next pattern:
-        elseif effect.number_string == "LN" then
-          if nextPattern.value == currPattern.value then
-            nextPattern.value = effect.amount_value
-          end
-        
-        -- Trigger:
-        elseif effect.number_string == "LT" then
-          if not is_trig_active(effect.amount_string, patternPlayCount) then
-            line:clear()
-          end
-        -- Inversed Trigger:
-        elseif effect.number_string == "LI" then
-          if is_trig_active(effect.amount_string, patternPlayCount) then
-            line:clear()
-          end        
-        -- Start track muted, and provide functionality for auto-unmute:
-        elseif effect.number_string == "LM" then
-          if patternPlayCount == 0 then
-            song.tracks[t]:mute()
-          end
-          if effect.amount_string ~= "00" then
-            if patternPlayCount == tonumber(effect.amount_string) then
-              song.tracks[t]:unmute()
-            end
-          end
-        end
-
-        -- Check for column effects (the apply to a single column):
-        local columns = line.note_columns
-        for c=1, #columns do
-          local column = line:note_column(c)
-          local effect_number = column.effect_number_string
-          local effect_amount = column.effect_amount_string
+      -- Do a separate iteration for the "LC" effect.
+      if not process_cutoff_points(t, dst, src, song, trackLengths, patternPlayCount) then
+        -- Usual filtering:
+        for l=1, dst.number_of_lines do
+          -- Check for filter
+          local line = dst.tracks[t].lines[l]
+  
+          -- Check for track effect (these apply to the whole line):
+          local effect = line:effect_column(1)
+  
           -- Fill:
-          if effect_number == "LF" then
+          if effect.number_string == "LF" then
             -- Remove the not playing ones:
             -- TODO: Check if this is correct:
-            if nextPattern.value ~= currPattern.value and effect_amount == "01" then
-              column:clear()
-            elseif nextPattern.value == currPattern.value and effect_amount == "00" then
-              column:clear()
+            if nextPattern.value ~= currPattern.value and effect.amount_string == "01" then
+              line:clear()
+            elseif nextPattern.value == currPattern.value and effect.amount_string == "00" then
+              line:clear()
+            end
+          
+          -- Auto-queue next pattern:
+          elseif effect.number_string == "LN" then
+            if nextPattern.value == currPattern.value then
+              nextPattern.value = effect.amount_value
             end
           
           -- Trigger:
-          elseif effect_number == "LT" then
-            if not is_trig_active(effect_amount, patternPlayCount) then
-              column:clear()
+          elseif effect.number_string == "LT" then
+            if not is_trig_active(effect.amount_string, patternPlayCount) then
+              line:clear()
             end
           -- Inversed Trigger:
-          elseif effect_number == "LI" then
-            if is_trig_active(effect_amount, patternPlayCount) then
-              column:clear()
-            end          
-          -- Start column muted, and provide functionality for auto-unmute:
-          elseif effect_number == "LM" then
+          elseif effect.number_string == "LI" then
+            if is_trig_active(effect.amount_string, patternPlayCount) then
+              line:clear()
+            end        
+          -- Start track muted, and provide functionality for auto-unmute:
+          elseif effect.number_string == "LM" then
             if patternPlayCount == 0 then
-              song.tracks[t]:set_column_is_muted(c, true)
+              song.tracks[t]:mute()
             end
-            if effect_amount ~= "00" then
-              if patternPlayCount == tonumber(effect_amount) then
-                song.tracks[t]:set_column_is_muted(c, false)
+            if effect.amount_string ~= "00" then
+              if patternPlayCount == tonumber(effect.amount_string) then
+                song.tracks[t]:unmute()
               end
             end
-          end -- end if
-          
-        end -- end for#columns        
-      end -- end for#lines
+          end
+  
+          -- Check for column effects (the apply to a single column):
+          local columns = line.note_columns
+          for c=1, #columns do
+            local column = line:note_column(c)
+            local effect_number = column.effect_number_string
+            local effect_amount = column.effect_amount_string
+            -- Fill:
+            if effect_number == "LF" then
+              -- Remove the not playing ones:
+              -- TODO: Check if this is correct:
+              if nextPattern.value ~= currPattern.value and effect_amount == "01" then
+                column:clear()
+              elseif nextPattern.value == currPattern.value and effect_amount == "00" then
+                column:clear()
+              end
+            
+            -- Trigger:
+            elseif effect_number == "LT" then
+              if not is_trig_active(effect_amount, patternPlayCount) then
+                column:clear()
+              end
+            -- Inversed Trigger:
+            elseif effect_number == "LI" then
+              if is_trig_active(effect_amount, patternPlayCount) then
+                column:clear()
+              end          
+            -- Start column muted, and provide functionality for auto-unmute:
+            elseif effect_number == "LM" then
+              if patternPlayCount == 0 then
+                song.tracks[t]:set_column_is_muted(c, true)
+              end
+              if effect_amount ~= "00" then
+                if patternPlayCount == tonumber(effect_amount) then
+                  song.tracks[t]:set_column_is_muted(c, false)
+                end
+              end
+            end -- end if
+            
+          end -- end for#columns        
+        end -- end for#lines
+      end -- end normal filtering
     end -- end if
   end -- end for#tracks
 
@@ -349,6 +286,10 @@ updatePattern = function()
     -- So if this script performs well under that it's ok
     print(string.format("updatePattern() - function elapsed time: %.4f\n", os.clock() - time))
   end
+end
+
+local function processCutoffPoints()
+  
 end
 
 -- Add notifier each time the loop ends:
