@@ -67,6 +67,7 @@ This is a rough lists of ideas that I want to add to this plugin in the future:
     - suggestion: `LF03`
 - Stutter / randomize track
 - Muting Groups - where you can mute/unmute multiple tracks at once
+- More optimizations (any help is welcome)
 
 ## Known issues & limitations
 
@@ -76,3 +77,4 @@ This is a rough lists of ideas that I want to add to this plugin in the future:
 - Muting in tracks don't work in tracks that are cut with the `LC` command
 - When live-editing a track with a `LC` command, funky things will happen due to the virtual counting.
 - Possibly a Renoise bug, but when you delete an effect from a track, the `L` in the FX column changes (to a `K` for example).
+- Transitioning between patterns of different lengths not yet very stable. Using `ZB00` on the end of your pattern helps when the next pattern is longer, but when transitioning from a longer to a shorter pattern it's not really stable yet.

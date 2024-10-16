@@ -8,7 +8,7 @@ local app = renoise.app()
 local tool = renoise.tool()
 local song = nil
 local doc = renoise.Document
-local benchmark = false   -- Output benchmarking information to the console, for dev purposes
+local benchmark = true   -- Output benchmarking information to the console, for dev purposes
 
 -- View Builder for preferences and set scale
 local vbp = renoise.ViewBuilder()
@@ -239,7 +239,7 @@ updatePattern = function()
         -- Usual filtering:
         for l=1, dst.number_of_lines do
           -- Check for filter
-          local line = dst.tracks[t].lines[l]
+          local line = dst:track(t):line(l)
   
           -- Check for track effect (these apply to the whole line):
           local effect = line:effect_column(1)
@@ -253,7 +253,7 @@ updatePattern = function()
           -- Auto-queue next pattern:
           elseif effect.number_string == "LN" then
             if nextPattern.value == currPattern.value then
-              nextPattern.value = effect.amount_value
+              nextPattern.value = tonumber(effect.amount_value)
             end
           
           -- Trigger:
@@ -334,9 +334,13 @@ local function processCutoffPoints()
 end
 
 -- Add notifier each time the loop ends:
-local function stepNotifier()  
+local function stepNotifier()
   -- Check for pattern change:
-  if currLine == song.patterns[1].number_of_lines then
+  if currLine == song.patterns[1].number_of_lines - 1 then
+    if currPattern.value ~= nextPattern.value then
+      -- Add a "ZB00" the the last line of the master track, so the next pattern will start at 0
+    end
+  elseif currLine == song.patterns[1].number_of_lines then
     -- Benchmark
     local time
     if benchmark == true then
