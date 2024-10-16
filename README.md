@@ -61,8 +61,6 @@ This is a rough lists of ideas that I want to add to this plugin in the future:
 - Add mute / unmute buttons to UI
     - Queue mute / unmute
         - When queueing mute, do play the first note before muting    
-- Add fill button to UI
-    - So you can trigger a fill without a transition
 - Add trig condition that only plays on the first pattern after a fill
     - suggestion: `LF02`
 - Add trig condition that doesn't plays on the first pattern after a fill
