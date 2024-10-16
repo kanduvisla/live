@@ -1,6 +1,7 @@
 require("includes/track_play_count")
 require("includes/note_triggers")
 require("includes/cutoff_points")
+require("includes/fill")
 
 -- Some basic vars for reuse:
 local app = renoise.app()
@@ -215,26 +216,8 @@ updatePattern = function()
   
           -- Fill:
           if effect.number_string == "LF" then
-            -- Remove the not playing ones:
-            if nextPattern.value ~= currPattern.value then
-              -- Transition to another pattern
-              -- Check if we're in the last run of the set:
-              if (patternPlayCount + 1) % patternSetCount == 0 then
-                -- We're in a transition, filter out "00"
-                if effect.amount_string == "00" then
-                  line:clear()
-                end
-              else
-                -- We're not yet in the last part of the set, filter out "01"
-                if effect.amount_string == "01" then
-                  line:clear()
-                end
-              end
-            else
-              -- No transition to another pattern, filter out "01"
-              if effect.amount_string == "01" then
-                line:clear()
-              end
+            if not is_fill(currPattern.value, nextPattern.value, patternPlayCount, patternSetCount, effect.amount_string) then
+              line:clear()
             end
             
           -- Auto-queue next pattern:
@@ -275,10 +258,7 @@ updatePattern = function()
             local effect_amount = column.effect_amount_string
             -- Fill:
             if effect_number == "LF" then
-              -- Remove the not playing ones:
-              if nextPattern.value ~= currPattern.value and effect_amount == "00" then
-                column:clear()
-              elseif nextPattern.value == currPattern.value and effect_amount == "01" then
+              if not is_fill(currPattern.value, nextPattern.value, patternPlayCount, patternSetCount, effect_amount) then
                 column:clear()
               end
             
