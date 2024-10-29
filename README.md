@@ -54,15 +54,21 @@ This tool adds the following effects to the pattern editor:
             - Triggs (`ZR`) and inverted triggs (`ZI`) are supported when a track uses `ZC`
             - Fills (`ZF`) and muting (`ZM`) are not supported when a track uses `ZC`
 
+## Keyboard shortcuts
+
+- `arrow left` : queue previous pattern
+- `arrow right` : queue next pattern
+- `f` : trigger fill
+- `esc` : close dialog
+- `1` to `8` : mute / unmute track 1 to 8
+- `q` to `i` _(upper keys on a qwerty keyboard)_ : mute / unmute track 9 to 16
+
 ## Ideas
 
 This is a rough lists of ideas that I want to add to this plugin in the future:
 
 - Get text from song and translate to instructions per pattern
-- Add mute / unmute buttons to UI
-    - Queue mute / unmute
-        - When queueing mute, do play the first note before muting
-    - Mute button in the UI should countdown when `ZM` is used
+- When queueing mute, do play the first note before muting
 - Add trig condition that only plays on the first pattern after a fill
     - suggestion: `ZF02`
 - Add trig condition that doesn't plays on the first pattern after a fill
@@ -70,7 +76,7 @@ This is a rough lists of ideas that I want to add to this plugin in the future:
 - Alternative fill
     - suggestion: `ZF04`
 - "Break" mute / fill (mute (a group?), do a fill and then unmute again)
-- Force unmute  
+- Force unmute
 - Stutter / randomize track
 - Muting Groups - where you can mute/unmute multiple tracks at once
 - Track playback speed (1/2, 1/3, 1/4, 1/8, 1/16, 1/32, 1/64)

@@ -94,6 +94,39 @@ end
 -- Keep state of the tracks (mute status, etc.)
 local trackState = {}
 
+setTrackButtonColor = function(trackIndex)
+  local button = vbp.views["track_button_" .. trackIndex]
+  
+  if trackState[trackIndex].trigged.value == true then
+    if trackState[trackIndex].muted.value == true then
+      button.color = {255, 0, 0}
+    else 
+      button.color = {128, 200, 0}
+    end
+  elseif trackState[trackIndex].muted.value == true then
+    button.color = {200, 0, 0}
+  else 
+    button.color = trackState[trackIndex].trackColor
+  end
+end
+
+toggleMute = function(trackIndex)
+  local track = song.tracks[trackIndex]
+  if track == nil or track.type ~= 1 then
+    return
+  end
+  
+  if track.mute_state == renoise.Track.MUTE_STATE_ACTIVE then
+    track:mute()
+    trackState[trackIndex].muted.value = true
+  else
+    track:unmute()
+    trackState[trackIndex].unmuteCounter.value = 0
+    trackState[trackIndex].muted.value = false
+  end
+  setTrackButtonColor(trackIndex)
+end
+
 createTrackButton = function(trackIndex)
   local track = song.tracks[trackIndex]
   if track == nil or track.type ~= 1 then
@@ -110,24 +143,20 @@ createTrackButton = function(trackIndex)
     trackState[trackIndex] = {
       track = trackIndex,
       trackName = trackName,
+      trackColor = trackColor,
       muted = doc.ObservableBoolean(track.mute_state ~= renoise.Track.MUTE_STATE_ACTIVE),
       unmuteCounter = doc.ObservableNumber(0),
       trigged = doc.ObservableBoolean(false)
     }
     
     local button = vbp:button {
+      id = "track_button_" .. trackIndex,
       width = 80,
       height = 80,
       text = "-",
       color = trackColor,
-      pressed = function()
-        if track.mute_state == renoise.Track.MUTE_STATE_ACTIVE then
-          track:mute()
-          trackState[trackIndex].muted.value = true
-        else
-          track:unmute()
-          trackState[trackIndex].muted.value = false
-        end
+      pressed = function() 
+        toggleMute(trackIndex)
       end
     }
 
@@ -154,17 +183,7 @@ createTrackButton = function(trackIndex)
       
     -- Observer for the blinking Indicator
     trackState[trackIndex].trigged:add_notifier(function()
-      if trackState[trackIndex].trigged.value == true then
-        if trackState[trackIndex].muted.value == true then
-          button.color = {255, 0, 0}
-        else 
-          button.color = {128, 200, 0}
-        end
-      elseif trackState[trackIndex].muted.value == true then
-        button.color = {200, 0, 0}
-      else 
-        button.color = trackColor
-      end
+      setTrackButtonColor(trackIndex)  
     end)
     
     return button
@@ -522,6 +541,38 @@ local function key_handler(dialog, key)
     trigger_fill()
   elseif key.name == "esc" then
     dialog:close()
+  elseif key.name == "1" then
+    toggleMute(1)
+  elseif key.name == "2" then
+    toggleMute(2)
+  elseif key.name == "3" then
+    toggleMute(3)
+  elseif key.name == "4" then
+    toggleMute(4)
+  elseif key.name == "5" then
+    toggleMute(5)
+  elseif key.name == "6" then
+    toggleMute(6)
+  elseif key.name == "7" then
+    toggleMute(7)
+  elseif key.name == "8" then
+    toggleMute(8)
+  elseif key.name == "q" then
+    toggleMute(9)
+  elseif key.name == "w" then
+    toggleMute(10)
+  elseif key.name == "e" then
+    toggleMute(11)
+  elseif key.name == "r" then
+    toggleMute(12)
+  elseif key.name == "t" then
+    toggleMute(13)
+  elseif key.name == "y" then
+    toggleMute(14)
+  elseif key.name == "u" then
+    toggleMute(15)
+  elseif key.name == "i" then
+    toggleMute(16)
   end
 end
 
