@@ -493,27 +493,32 @@ end
 
 local resetTriggerLights = false
 
+local function hasNote(line)
+  for _, note_column in ipairs(line.note_columns) do
+    if note_column.note_value ~= renoise.PatternLine.EMPTY_NOTE then
+      return true
+    end
+  end
+  
+  return false
+end
+
 -- Add notifier each time the loop ends:
 local function stepNotifier()
+  -- Benchmark
+  local time
+  if benchmark == true then
+    time = os.clock()
+  end
+
   -- Check for pattern change:
   if currLine == song.patterns[1].number_of_lines - 1 then
     if currPattern.value ~= nextPattern.value then
       -- Add a "ZB00" the the last line of the master track, so the next pattern will start at 0
     end
   elseif currLine == song.patterns[1].number_of_lines then
-    -- Benchmark
-    local time
-    if benchmark == true then
-      time = os.clock()
-    end
     -- Change patterns:
     setupPattern()
-    if benchmark == true then
-      -- For reference:
-      -- At 140 BPM, 1 step (1/16th note) is approximately 107.14 milliseconds.
-      -- So if this script performs well under that it's ok
-      print(string.format("stepNotifier() - total elapsed time: %.4f\n", os.clock() - time))
-    end
   end
   
   -- Show trig indicator:
@@ -521,8 +526,15 @@ local function stepNotifier()
   for key in pairs(trackState) do
     local trackData = trackState[key]
     local line = song:pattern(1):track(trackData.track):line(currLine)
-    trackState[key].trigged.value = line.is_empty == false
+    trackState[key].trigged.value = hasNote(line)
     resetTriggerLights = true
+  end
+
+  if benchmark == true then
+    -- For reference:
+    -- At 140 BPM, 1 step (1/16th note) is approximately 107.14 milliseconds.
+    -- So if this script performs well under that it's ok
+    print(string.format("stepNotifier() - total elapsed time: %.4f\n", os.clock() - time))
   end
 end
 
