@@ -73,6 +73,11 @@ This is a rough lists of ideas that I want to add to this plugin in the future:
 - Force unmute  
 - Stutter / randomize track
 - Muting Groups - where you can mute/unmute multiple tracks at once
+- Track playback speed (1/2, 1/3, 1/4, 1/8, 1/16, 1/32, 1/64)
+    - Also stretch delay column
+    - suggestion: `ZSxx`
+- One tap on stop should not reset pattern, stop while stop should
+- External midi syncing / queueing
 - More optimizations (any help is welcome)
 
 ## Known issues & limitations

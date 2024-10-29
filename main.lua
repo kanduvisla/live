@@ -91,73 +91,136 @@ local trigger_fill = function()
   updatePattern()   
 end
 
-local dialog = vbp:column {
-  margin = 1,
-  vbp:horizontal_aligner {
-    margin = 1,
-    mode = "justify", 
-    vbp:column {
-      margin = 1,
-      vbp:text { text = "Welcome to Live - a Renoise Live Performance Tool" },
-      vbp:text { text = "Special FX:" },
-      vbp:text { text = "ZF00 / ZF01 - Play only on FILL / !FILL" },
-      vbp:text { text = "ZMxx - Start muted, unmute after xx plays" },
-      vbp:text { text = "ZNxx - Set next pattern to play to xx" },
-      vbp:text { text = "ZRxy - Trig (00=1st, 01=!1st, x mod y)" },
-      vbp:text { text = "ZIxy - Inverse Trig (x mod y)" },
-      vbp:text { text = "ZC00 - Cut pattern" },
-      vbp:text { text = "ZPxx - Set pattern plays to xx" },
-    },
-    vbp:button {
-      text = "Play",
+-- Keep state of the tracks (mute status, etc.)
+local trackState = {}
+
+createTrackButton = function(trackIndex)
+  local track = song.tracks[trackIndex]
+  if track == nil then
+    return vbp:button {
+      text = "-",
+      width = 50,
+      height = 50,
+      active = false
+    }
+  else
+    local trackName = track.name
+    local trackColor = track.color
+    
+    trackState[trackIndex] = {
+      trackName = trackName,
+      muted = doc.ObservableBoolean(false),
+      trigged = doc.ObservableBoolean(false)
+    }
+    
+    return vbp:button {
+      text = string.format("%s", trackIndex),
       width = 50,
       height = 50,
       pressed = function()
-        -- Play pattern 0 in loop
-        currPattern.value = 1
-        nextPattern.value = 1
-        song.transport.loop_pattern = true
-        local song_pos = renoise.SongPos(1, 1)
-        song.transport:start_at(song_pos)
-      end
-    },
-    vbp:button {
-      text = "Stop",
-      width = 50,
-      height = 50,
-      pressed = function()
-        song.transport:stop()
-        reset()
-        setupPattern()
+        -- Do stuff
       end
     }
-    -- Add pattern remarks
-    
-  },
-  vbp:horizontal_aligner {
+    end
+end
+
+-- local trackButtons = vbp:column {}
+
+createTrackButtons = function()
+  return vbp:column {
     margin = 1,
-    mode = "justify",
-    vbp:button {
-      text = "Prev",
-      width = 50,
-      height = 50,
-      pressed = queue_previous_pattern
+    -- Track buttons
+    vbp:horizontal_aligner {
+      margin = 1,
+      mode = "justify",
+      createTrackButton(1),
+      createTrackButton(2),
+      createTrackButton(3),
+      createTrackButton(4),
+      createTrackButton(5),
+      createTrackButton(6),
+      createTrackButton(7),
+      createTrackButton(8),
     },
-    patternIndicatorView,
-    vbp:button {
-      text = "Next",
-      width = 50,
-      height = 50,
-      pressed = queue_next_pattern
+    vbp:horizontal_aligner {
+      margin = 1,
+      mode = "justify",
+      createTrackButton(9),
+      createTrackButton(10),
+      createTrackButton(11),
+      createTrackButton(12),
+      createTrackButton(13),
+      createTrackButton(14),
+      createTrackButton(15),
+      createTrackButton(16),
     },
-    vbp:button {
-      text = "Fill",
-      width = 50,
-      height = 50,
-      pressed = trigger_fill
+  }
+end
+
+createDialog = function()
+  local dialog = vbp:column {
+    margin = 1,
+    vbp:horizontal_aligner {
+      margin = 1,
+      mode = "justify", 
+      vbp:column {
+        margin = 1,
+        vbp:text { text = "Welcome to Live - a Renoise Live Performance Tool" }
+      },
+      vbp:button {
+        text = "Play",
+        width = 50,
+        height = 50,
+        pressed = function()
+          -- Play pattern 0 in loop
+          currPattern.value = 1
+          nextPattern.value = 1
+          song.transport.loop_pattern = true
+          local song_pos = renoise.SongPos(1, 1)
+          song.transport:start_at(song_pos)
+        end
+      },
+      vbp:button {
+        text = "Stop",
+        width = 50,
+        height = 50,
+        pressed = function()
+          song.transport:stop()
+          reset()
+          setupPattern()
+        end
+      }
+      -- Add pattern remarks
+      
+    },
+    createTrackButtons(),
+    vbp:horizontal_aligner {
+      margin = 1,
+      mode = "justify",
+      vbp:button {
+        text = "Prev",
+        width = 50,
+        height = 50,
+        pressed = queue_previous_pattern
+      },
+      patternIndicatorView,
+      vbp:button {
+        text = "Next",
+        width = 50,
+        height = 50,
+        pressed = queue_next_pattern
+      },
+      vbp:button {
+        text = "Fill",
+        width = 50,
+        height = 50,
+        pressed = trigger_fill
+      }
     }
   }
-}
+  
+  return dialog
+end
 
 -- Setup pattern, this is called every time a new pattern begins
 setupPattern = function()
@@ -381,6 +444,23 @@ local function key_handler(dialog, key)
   end
 end
 
+local dialog = nil
+local dialog_content = nil
+
+function showDialog()
+  if not dialog or not dialog.visible then
+    -- create, or re-create if hidden
+    if not dialog_content then 
+      dialog_content = createDialog() -- run only once
+    end
+    
+    dialog = app:show_custom_dialog("Live", dialog_content, key_handler)
+  else
+    -- bring existing/visible dialog to front
+    dialog:show()
+  end
+end
+
 -- Main window
 showMainWindow = function()
   if song == nil then
@@ -399,8 +479,9 @@ showMainWindow = function()
   reset()
   
   -- Show dialog:
-  app:show_custom_dialog("Live", dialog, key_handler)
- 
+  showDialog()
+  
+  
   setupPattern()
 end
 
