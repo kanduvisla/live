@@ -100,13 +100,13 @@ local dialog = vbp:column {
       margin = 1,
       vbp:text { text = "Welcome to Live - a Renoise Live Performance Tool" },
       vbp:text { text = "Special FX:" },
-      vbp:text { text = "LF00 / LF01 - Play only on FILL / !FILL" },
-      vbp:text { text = "LMxx - Start muted, unmute after xx plays" },
-      vbp:text { text = "LNxx - Set next pattern to play to xx" },
-      vbp:text { text = "LTxy - Trig (00=1st, 01=!1st, x mod y)" },
-      vbp:text { text = "LIxy - Inverse Trig (x mod y)" },
-      vbp:text { text = "LC00 - Cut pattern" },
-      vbp:text { text = "LPxx - Set pattern plays to xx" },
+      vbp:text { text = "ZF00 / ZF01 - Play only on FILL / !FILL" },
+      vbp:text { text = "ZMxx - Start muted, unmute after xx plays" },
+      vbp:text { text = "ZNxx - Set next pattern to play to xx" },
+      vbp:text { text = "ZRxy - Trig (00=1st, 01=!1st, x mod y)" },
+      vbp:text { text = "ZIxy - Inverse Trig (x mod y)" },
+      vbp:text { text = "ZC00 - Cut pattern" },
+      vbp:text { text = "ZPxx - Set pattern plays to xx" },
     },
     vbp:button {
       text = "Play",
@@ -208,7 +208,7 @@ getPatternTrackLength = function(patternTrack)
   for l=1, number_of_lines do
     local line = patternTrack:line(l)
     local effect = line:effect_column(1)
-    if effect.number_string == "LC" then
+    if effect.number_string == "ZC" then
       -- Cut!
       return l - 1
     end
@@ -234,7 +234,7 @@ updatePattern = function()
   for t=1, #dst.tracks do
     -- Only for note tracks
     if song.tracks[t].type == 1 then
-      -- Do a separate iteration for the "LC" effect.
+      -- Do a separate iteration for the "ZC" effect.
       if not process_cutoff_points(t, dst, src, song, trackLengths, patternPlayCount) then
         -- Usual filtering:
         for l=1, dst.number_of_lines do
@@ -245,29 +245,29 @@ updatePattern = function()
           local effect = line:effect_column(1)
   
           -- Fill:
-          if effect.number_string == "LF" then
+          if effect.number_string == "ZF" then
             if not is_fill(currPattern.value, nextPattern.value, patternPlayCount, patternSetCount, effect.amount_string, userInitiatedFill) then
               line:clear()
             end
             
           -- Auto-queue next pattern:
-          elseif effect.number_string == "LN" then
+          elseif effect.number_string == "ZN" then
             if nextPattern.value == currPattern.value then
               nextPattern.value = tonumber(effect.amount_value)
             end
           
           -- Trigger:
-          elseif effect.number_string == "LT" then
+          elseif effect.number_string == "ZR" then
             if not is_trig_active(effect.amount_string, patternPlayCount) then
               line:clear()
             end
           -- Inversed Trigger:
-          elseif effect.number_string == "LI" then
+          elseif effect.number_string == "ZI" then
             if is_trig_active(effect.amount_string, patternPlayCount) then
               line:clear()
             end        
           -- Start track muted, and provide functionality for auto-unmute:
-          elseif effect.number_string == "LM" then
+          elseif effect.number_string == "ZM" then
             if patternPlayCount == 0 then
               song.tracks[t]:mute()
             end
@@ -276,7 +276,7 @@ updatePattern = function()
                 song.tracks[t]:unmute()
               end
             end
-          elseif effect.number_string == "LP" then
+          elseif effect.number_string == "ZP" then
             patternSetCount = tonumber(effect.amount_string)
           end
   
@@ -287,23 +287,23 @@ updatePattern = function()
             local effect_number = column.effect_number_string
             local effect_amount = column.effect_amount_string
             -- Fill:
-            if effect_number == "LF" then
+            if effect_number == "ZF" then
               if not is_fill(currPattern.value, nextPattern.value, patternPlayCount, patternSetCount, effect_amount, userInitiatedFill) then
                 column:clear()
               end
             
             -- Trigger:
-            elseif effect_number == "LT" then
+            elseif effect_number == "ZR" then
               if not is_trig_active(effect_amount, patternPlayCount) then
                 column:clear()
               end
             -- Inversed Trigger:
-            elseif effect_number == "LI" then
+            elseif effect_number == "ZI" then
               if is_trig_active(effect_amount, patternPlayCount) then
                 column:clear()
               end          
             -- Start column muted, and provide functionality for auto-unmute:
-            elseif effect_number == "LM" then
+            elseif effect_number == "ZM" then
               if patternPlayCount == 0 then
                 song.tracks[t]:set_column_is_muted(c, true)
               end
