@@ -208,7 +208,7 @@ getPatternTrackLength = function(patternTrack)
   for l=1, number_of_lines do
     local line = patternTrack:line(l)
     local effect = line:effect_column(1)
-    if effect.number_string == "LC" then
+    if effect.number_string == "ZC" then
       -- Cut!
       return l - 1
     end

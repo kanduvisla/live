@@ -13,7 +13,7 @@ process_cutoff_points = function(t, dstPattern, srcPattern, song, trackLengths, 
       -- How many times does this pattern "fit" in this track:
       local duplicationCount = math.ceil(numberOfLines / trackLengths[t]) + 1
       
-      -- Copy from first line up until the line with the "LC" effectL
+      -- Copy from first line up until the line with the "ZC" effect:
       for fl=1, l - 1 do
         -- Offset from the previous iteration:
         local offset = (patternPlayCount * numberOfLines) % trackLengths[t]
@@ -78,7 +78,7 @@ process_cutoff_points = function(t, dstPattern, srcPattern, song, trackLengths, 
       end -- end for#fl
       
       return true
-    end -- end if#"LC"
+    end -- end if#"ZC"
   end -- end for#numberOfLines
   
   return false
