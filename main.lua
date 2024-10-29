@@ -96,11 +96,11 @@ local trackState = {}
 
 createTrackButton = function(trackIndex)
   local track = song.tracks[trackIndex]
-  if track == nil then
+  if track == nil or track.type ~= 1 then
     return vbp:button {
       text = "-",
-      width = 50,
-      height = 50,
+      width = 80,
+      height = 80,
       active = false
     }
   else
@@ -109,25 +109,72 @@ createTrackButton = function(trackIndex)
     
     trackState[trackIndex] = {
       trackName = trackName,
-      muted = doc.ObservableBoolean(false),
+      muted = doc.ObservableBoolean(track.mute_state ~= renoise.Track.MUTE_STATE_ACTIVE),
+      unmuteCounter = doc.ObservableNumber(0),
       trigged = doc.ObservableBoolean(false)
     }
     
-    return vbp:button {
-      text = string.format("%s", trackIndex),
-      width = 50,
-      height = 50,
+    local button = vbp:button {
+      width = 80,
+      height = 80,
+      text = "-",
+      color = trackColor,
       pressed = function()
-        -- Do stuff
+        if track.mute_state == renoise.Track.MUTE_STATE_ACTIVE then
+          track:mute()
+          trackState[trackIndex].muted.value = true
+        else
+          track:unmute()
+          trackState[trackIndex].muted.value = false
+        end
       end
     }
+
+    local function setButtonColor()
+      if trackState[trackIndex].muted.value == true then
+        button.color = {255, 0, 0}
+        button.text = string.format("%s\n%s\n(M)", trackIndex, trackName)
+      else
+        button.color = trackColor
+        button.text = string.format("%s\n%s", trackIndex, trackName)
+      end
     end
+    
+    local function setMuteCounter()
+      if trackState[trackIndex].unmuteCounter.value > 0 then
+        button.text = string.format(
+          "%s\n%s\n(M:%s)", 
+          trackIndex, 
+          trackName, 
+          trackState[trackIndex].unmuteCounter.value
+        )  
+      end
+    end
+    
+    setButtonColor()
+
+    -- Observer for the mute button change color behavior
+    trackState[trackIndex].unmuteCounter:add_notifier(setMuteCounter)
+    trackState[trackIndex].muted:add_notifier(setButtonColor)
+      
+    return button
+  end
 end
 
--- local trackButtons = vbp:column {}
+local trackButtons = vbp:column {
+  id = "track_buttons",
+  vbp:text { text = "x" }
+}
+
+local trackButtonsContainer = vbp:column {
+  id = "track_buttons_container"
+}
+
+trackButtonsContainer:add_child(trackButtons)
 
 createTrackButtons = function()
   return vbp:column {
+    id = "track_buttons",
     margin = 1,
     -- Track buttons
     vbp:horizontal_aligner {
@@ -193,7 +240,9 @@ createDialog = function()
       -- Add pattern remarks
       
     },
-    createTrackButtons(),
+    -- Track buttons:
+    trackButtonsContainer,
+    -- Pattern switcher:
     vbp:horizontal_aligner {
       margin = 1,
       mode = "justify",
@@ -296,7 +345,8 @@ updatePattern = function()
 
   for t=1, #dst.tracks do
     -- Only for note tracks
-    if song.tracks[t].type == 1 then
+    local track = song:track(t)
+    if track.type == 1 then
       -- Do a separate iteration for the "ZC" effect.
       if not process_cutoff_points(t, dst, src, song, trackLengths, patternPlayCount) then
         -- Usual filtering:
@@ -332,11 +382,18 @@ updatePattern = function()
           -- Start track muted, and provide functionality for auto-unmute:
           elseif effect.number_string == "ZM" then
             if patternPlayCount == 0 then
-              song.tracks[t]:mute()
+              track:mute()
+              trackState[t].muted.value = true
             end
             if effect.amount_string ~= "00" then
-              if patternPlayCount == tonumber(effect.amount_string) then
-                song.tracks[t]:unmute()
+              local amount = tonumber(effect.amount_string)
+              if patternPlayCount == amount then
+                track:unmute()
+                trackState[t].muted.value = false
+                trackState[t].unmuteCounter.value = 0
+              elseif track.mute_state ~= renoise.Track.MUTE_STATE_ACTIVE then
+                -- Update unmute counter
+                trackState[t].unmuteCounter.value = amount - (patternPlayCount % amount)
               end
             end
           elseif effect.number_string == "ZP" then
@@ -449,8 +506,15 @@ local dialog_content = nil
 
 function showDialog()
   if not dialog or not dialog.visible then
+    -- Re-create track buttons:
+    local tbContainer = vbp.views.track_buttons_container
+    local tb = vbp.views.track_buttons
+    tbContainer:remove_child(tb)
+    vbp.views.track_buttons = nil
+    tbContainer:add_child(createTrackButtons())
+    
     -- create, or re-create if hidden
-    if not dialog_content then 
+    if not dialog_content then
       dialog_content = createDialog() -- run only once
     end
     
@@ -480,7 +544,6 @@ showMainWindow = function()
   
   -- Show dialog:
   showDialog()
-  
   
   setupPattern()
 end

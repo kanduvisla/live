@@ -88,3 +88,4 @@ This is a rough lists of ideas that I want to add to this plugin in the future:
 - Muting in tracks don't work in tracks that are cut with the `ZC` command
 - When live-editing a track with a `ZC` command, funky things will happen due to the virtual counting.
 - Transitioning between patterns of different lengths not yet very stable. Using `ZB00` on the end of your pattern helps when the next pattern is longer, but when transitioning from a longer to a shorter pattern it's not really stable yet.
+- The Mute buttons of the UI only apply to tracks. So when applying on columns, it makes sense to make use of the timed muters
