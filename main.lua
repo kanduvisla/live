@@ -123,6 +123,9 @@ toggleMute = function(trackIndex)
     track:unmute()
     trackState[trackIndex].unmuteCounter.value = 0
     trackState[trackIndex].muted.value = false
+    trackState[trackIndex].mutedColumnCount.value = 0
+    -- Unmute all columns:
+    
   end
   setTrackButtonColor(trackIndex)
 end
@@ -146,7 +149,8 @@ createTrackButton = function(trackIndex)
       trackColor = trackColor,
       muted = doc.ObservableBoolean(track.mute_state ~= renoise.Track.MUTE_STATE_ACTIVE),
       unmuteCounter = doc.ObservableNumber(0),
-      trigged = doc.ObservableBoolean(false)
+      trigged = doc.ObservableBoolean(false),
+      mutedColumnCount = doc.ObservableNumber(0)
     }
     
     local button = vbp:button {
@@ -170,7 +174,14 @@ createTrackButton = function(trackIndex)
         )  
       elseif trackState[trackIndex].muted.value == true then
         button.text = string.format("%s\n%s\n(M)", trackIndex, trackName)
-      else
+      elseif trackState[trackIndex].mutedColumnCount.value > 0 then
+        button.text = string.format(
+          "%s\n%s\n(MC:%s)", 
+          trackIndex, 
+          trackName,
+          trackState[trackIndex].mutedColumnCount.value
+        )
+      else        
         button.text = string.format("%s\n%s", trackIndex, trackName)
       end
     end
@@ -180,6 +191,7 @@ createTrackButton = function(trackIndex)
     -- Observer for the mute button change color behavior
     trackState[trackIndex].unmuteCounter:add_notifier(setButtonText)
     trackState[trackIndex].muted:add_notifier(setButtonText)
+    trackState[trackIndex].mutedColumnCount:add_notifier(setButtonText)
       
     -- Observer for the blinking Indicator
     trackState[trackIndex].trigged:add_notifier(function()
@@ -191,8 +203,7 @@ createTrackButton = function(trackIndex)
 end
 
 local trackButtons = vbp:column {
-  id = "track_buttons",
-  vbp:text { text = "x" }
+  id = "track_buttons"
 }
 
 local trackButtonsContainer = vbp:column {
@@ -429,7 +440,7 @@ updatePattern = function()
             patternSetCount = tonumber(effect.amount_string)
           end
   
-          -- Check for column effects (the apply to a single column):
+          -- Check for column effects (they apply to a single column):
           local columns = line.note_columns
           for c=1, #columns do
             local column = line:note_column(c)
@@ -454,11 +465,13 @@ updatePattern = function()
             -- Start column muted, and provide functionality for auto-unmute:
             elseif effect_number == "ZM" then
               if patternPlayCount == 0 then
-                song.tracks[t]:set_column_is_muted(c, true)
+                track:set_column_is_muted(c, true)
+                trackState[t].mutedColumnCount.value = trackState[t].mutedColumnCount.value + 1
               end
               if effect_amount ~= "00" then
                 if patternPlayCount == tonumber(effect_amount) then
-                  song.tracks[t]:set_column_is_muted(c, false)
+                  track:set_column_is_muted(c, false)
+                  trackState[t].mutedColumnCount.value = trackState[t].mutedColumnCount.value - 1
                 end
               end
             end -- end if
@@ -586,6 +599,9 @@ function showDialog()
     local tb = vbp.views.track_buttons
     tbContainer:remove_child(tb)
     vbp.views.track_buttons = nil
+    for i=1, 16 do
+      vbp.views["track_button_" .. i] = nil
+    end
     tbContainer:add_child(createTrackButtons())
     
     -- create, or re-create if hidden
