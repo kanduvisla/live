@@ -108,6 +108,7 @@ createTrackButton = function(trackIndex)
     local trackColor = track.color
     
     trackState[trackIndex] = {
+      track = trackIndex,
       trackName = trackName,
       muted = doc.ObservableBoolean(track.mute_state ~= renoise.Track.MUTE_STATE_ACTIVE),
       unmuteCounter = doc.ObservableNumber(0),
@@ -130,17 +131,7 @@ createTrackButton = function(trackIndex)
       end
     }
 
-    local function setButtonColor()
-      if trackState[trackIndex].muted.value == true then
-        button.color = {255, 0, 0}
-        button.text = string.format("%s\n%s\n(M)", trackIndex, trackName)
-      else
-        button.color = trackColor
-        button.text = string.format("%s\n%s", trackIndex, trackName)
-      end
-    end
-    
-    local function setMuteCounter()
+    local function setButtonText()
       if trackState[trackIndex].unmuteCounter.value > 0 then
         button.text = string.format(
           "%s\n%s\n(M:%s)", 
@@ -148,15 +139,34 @@ createTrackButton = function(trackIndex)
           trackName, 
           trackState[trackIndex].unmuteCounter.value
         )  
+      elseif trackState[trackIndex].muted.value == true then
+        button.text = string.format("%s\n%s\n(M)", trackIndex, trackName)
+      else
+        button.text = string.format("%s\n%s", trackIndex, trackName)
       end
     end
     
-    setButtonColor()
+    setButtonText()
 
     -- Observer for the mute button change color behavior
-    trackState[trackIndex].unmuteCounter:add_notifier(setMuteCounter)
-    trackState[trackIndex].muted:add_notifier(setButtonColor)
+    trackState[trackIndex].unmuteCounter:add_notifier(setButtonText)
+    trackState[trackIndex].muted:add_notifier(setButtonText)
       
+    -- Observer for the blinking Indicator
+    trackState[trackIndex].trigged:add_notifier(function()
+      if trackState[trackIndex].trigged.value == true then
+        if trackState[trackIndex].muted.value == true then
+          button.color = {255, 0, 0}
+        else 
+          button.color = {128, 200, 0}
+        end
+      elseif trackState[trackIndex].muted.value == true then
+        button.color = {200, 0, 0}
+      else 
+        button.color = trackColor
+      end
+    end)
+    
     return button
   end
 end
@@ -449,9 +459,7 @@ updatePattern = function()
   end
 end
 
-local function processCutoffPoints()
-  
-end
+local resetTriggerLights = false
 
 -- Add notifier each time the loop ends:
 local function stepNotifier()
@@ -475,6 +483,15 @@ local function stepNotifier()
       print(string.format("stepNotifier() - total elapsed time: %.4f\n", os.clock() - time))
     end
   end
+  
+  -- Show trig indicator:
+  -- TODO: Performance check on RPI:
+  for key in pairs(trackState) do
+    local trackData = trackState[key]
+    local line = song:pattern(1):track(trackData.track):line(currLine)
+    trackState[key].trigged.value = line.is_empty == false
+    resetTriggerLights = true
+  end
 end
 
 -- Idle observer
@@ -484,6 +501,13 @@ local function idleObserver()
     if song.transport.playing and currLine ~= prevLine then
       stepNotifier()
       prevLine = currLine
+    elseif resetTriggerLights == true then
+      for key in pairs(trackState) do
+        local trackData = trackState[key]
+        local line = song:pattern(1):track(trackData.track):line(currLine)
+        trackState[key].trigged.value = false
+        resetTriggerLights = false
+      end
     end
   end
 end
