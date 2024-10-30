@@ -89,7 +89,7 @@ end
 -- Trigger a fill
 local trigger_fill = function()
   userInitiatedFill = true
-  vbp.views.fill_button.color = {255, 255, 255}
+  fillButton.color = {255, 255, 255}
   updatePatternIndicator()
   updatePattern()   
 end
@@ -241,6 +241,15 @@ local playButton = vbp:button {
   end
 }
 
+local fillButton = vbp:button {
+  id = "fill_button",
+  text = "Fill",
+  width = buttonSize,
+  height = buttonSize,
+  pressed = trigger_fill,
+  color = {1, 1, 1}
+}
+
 createTrackButtons = function()
   return vbp:column {
     id = "track_buttons",
@@ -253,14 +262,7 @@ createTrackButtons = function()
       createTrackButton(2),
       createTrackButton(3),
       createTrackButton(4),
-      vbp:button {
-        id = "fill_button",
-        text = "Fill",
-        width = buttonSize,
-        height = buttonSize,
-        pressed = trigger_fill,
-        color = {1, 1, 1}
-      }
+      fillButton
     },
     -- Track buttons + placeholder
     vbp:horizontal_aligner {
@@ -367,7 +369,7 @@ setupPattern = function()
     patternPlayCount = 0
     patternSetCount = 1
     userInitiatedFill = false
-    vbp.views.fill_button.color = {1, 1, 1}
+    fillButton.color = {1, 1, 1}
     
     for t=1, #dst.tracks do
       -- Only for note tracks
@@ -387,7 +389,7 @@ setupPattern = function()
     -- If we're back at the start, the user initiated fill needs to be reset:
     if patternPlayCount % patternSetCount == 0 then
       userInitiatedFill = false
-      vbp.views.fill_button.color = {1, 1, 1}
+      fillButton.color = {1, 1, 1}
     end
     
     -- Update pattern
@@ -654,8 +656,11 @@ function showDialog()
     -- Re-create track buttons:
     local tbContainer = vbp.views.track_buttons_container
     local tb = vbp.views.track_buttons
-    tbContainer:remove_child(tb)
-    vbp.views.track_buttons = nil
+    if tb ~= nil then
+      tbContainer:remove_child(tb)
+      vbp.views.track_buttons = nil
+    end
+    
     for i=1, 16 do
       vbp.views["track_button_" .. i] = nil
     end
