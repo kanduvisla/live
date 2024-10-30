@@ -24,6 +24,7 @@ local patternPlayCount = 0
 local patternSetCount = 1   -- How many patterns in a "set"
 local trackLengths = {}     -- Remember the individual lengths of tracks
 local userInitiatedFill = false
+local buttonSize = 80
 
 reset = function()
   currLine = 0
@@ -34,6 +35,7 @@ reset = function()
   patternSetCount = 1
   trackLengths = {}
   userInitiatedFill = false
+  -- vbp.views.fill_button.color = {1, 1, 1}
 end
 
 -- Pattern indicator
@@ -42,8 +44,8 @@ local patternIndicatorView = vbp:text {
   align = "center",
   font = "big",
   style = "strong",
-  width = 100,
-  height = 50
+  width = buttonSize,
+  height = buttonSize
 }
 
 updatePatternIndicator = function()
@@ -87,6 +89,7 @@ end
 -- Trigger a fill
 local trigger_fill = function()
   userInitiatedFill = true
+  vbp.views.fill_button.color = {255, 255, 255}
   updatePatternIndicator()
   updatePattern()   
 end
@@ -135,8 +138,8 @@ createTrackButton = function(trackIndex)
   if track == nil or track.type ~= 1 then
     return vbp:button {
       text = "-",
-      width = 80,
-      height = 80,
+      width = buttonSize,
+      height = buttonSize,
       active = false
     }
   else
@@ -155,8 +158,8 @@ createTrackButton = function(trackIndex)
     
     local button = vbp:button {
       id = "track_button_" .. trackIndex,
-      width = 80,
-      height = 80,
+      width = buttonSize,
+      height = buttonSize,
       text = "-",
       color = trackColor,
       pressed = function() 
@@ -212,11 +215,37 @@ local trackButtonsContainer = vbp:column {
 
 trackButtonsContainer:add_child(trackButtons)
 
+local playButton = vbp:button {
+  id = "transport_button",
+  text = "Play",
+  width = buttonSize,
+  height = buttonSize,
+  color = {0, 128, 0},
+  pressed = function()
+    if song.transport.playing then
+      song.transport:stop()
+      reset()
+      setupPattern()
+      vbp.views.transport_button.text = "Play"
+      vbp.views.transport_button.color = {0, 128, 0}
+    else
+      -- Play pattern 0 in loop
+      currPattern.value = 1
+      nextPattern.value = 1
+      song.transport.loop_pattern = true
+      local song_pos = renoise.SongPos(1, 1)
+      song.transport:start_at(song_pos)
+      vbp.views.transport_button.text = "Stop"
+      vbp.views.transport_button.color = {128, 0, 0}
+    end
+  end
+}
+
 createTrackButtons = function()
   return vbp:column {
     id = "track_buttons",
     margin = 1,
-    -- Track buttons
+    -- Track buttons + Fill
     vbp:horizontal_aligner {
       margin = 1,
       mode = "justify",
@@ -224,11 +253,32 @@ createTrackButtons = function()
       createTrackButton(2),
       createTrackButton(3),
       createTrackButton(4),
+      vbp:button {
+        id = "fill_button",
+        text = "Fill",
+        width = buttonSize,
+        height = buttonSize,
+        pressed = trigger_fill,
+        color = {1, 1, 1}
+      }
+    },
+    -- Track buttons + placeholder
+    vbp:horizontal_aligner {
+      margin = 1,
+      mode = "justify",
       createTrackButton(5),
       createTrackButton(6),
       createTrackButton(7),
       createTrackButton(8),
+      vbp:button {
+        width = buttonSize,
+        height = buttonSize,
+        text = "-",
+        active = false,
+        color = {1, 1, 1}
+      }
     },
+    -- Track buttons + placeholder
     vbp:horizontal_aligner {
       margin = 1,
       mode = "justify",
@@ -236,76 +286,69 @@ createTrackButtons = function()
       createTrackButton(10),
       createTrackButton(11),
       createTrackButton(12),
+      vbp:button {
+        width = buttonSize,
+        height = buttonSize,
+        text = "-",
+        active = false,
+        color = {1, 1, 1}
+      }
+    },
+    -- Track buttons + placeholder
+    vbp:horizontal_aligner {
+      margin = 1,
+      mode = "justify",
       createTrackButton(13),
       createTrackButton(14),
       createTrackButton(15),
       createTrackButton(16),
+      vbp:button {
+        width = buttonSize,
+        height = buttonSize,
+        text = "-",
+        active = false,
+        color = {1, 1, 1}
+      }
     },
+    -- Transport buttons:
+    vbp:row {
+      style = "plain",
+      vbp:horizontal_aligner {
+        margin = 1,
+        mode = "justify",
+        playButton,
+        vbp:button {
+          width = buttonSize,
+          height = buttonSize,
+          text = "-",
+          active = false,
+          color = {1, 1, 1}
+        },
+        vbp:button {
+          text = "Prev",
+          width = buttonSize,
+          height = buttonSize,
+          color = {1, 1, 1},
+          pressed = queue_previous_pattern
+        },
+        patternIndicatorView,
+        vbp:button {
+          text = "Next",
+          width = buttonSize,
+          height = buttonSize,
+          color = {1, 1, 1},
+          pressed = queue_next_pattern
+        }
+      }
+      }
   }
 end
 
 createDialog = function()
   local dialog = vbp:column {
     margin = 1,
-    vbp:horizontal_aligner {
-      margin = 1,
-      mode = "justify", 
-      vbp:column {
-        margin = 1,
-        vbp:text { text = "Welcome to Live - a Renoise Live Performance Tool" }
-      },
-      vbp:button {
-        text = "Play",
-        width = 50,
-        height = 50,
-        pressed = function()
-          -- Play pattern 0 in loop
-          currPattern.value = 1
-          nextPattern.value = 1
-          song.transport.loop_pattern = true
-          local song_pos = renoise.SongPos(1, 1)
-          song.transport:start_at(song_pos)
-        end
-      },
-      vbp:button {
-        text = "Stop",
-        width = 50,
-        height = 50,
-        pressed = function()
-          song.transport:stop()
-          reset()
-          setupPattern()
-        end
-      }
-      -- Add pattern remarks
-      
-    },
     -- Track buttons:
-    trackButtonsContainer,
-    -- Pattern switcher:
-    vbp:horizontal_aligner {
-      margin = 1,
-      mode = "justify",
-      vbp:button {
-        text = "Prev",
-        width = 50,
-        height = 50,
-        pressed = queue_previous_pattern
-      },
-      patternIndicatorView,
-      vbp:button {
-        text = "Next",
-        width = 50,
-        height = 50,
-        pressed = queue_next_pattern
-      },
-      vbp:button {
-        text = "Fill",
-        width = 50,
-        height = 50,
-        pressed = trigger_fill
-      }
-    }
+    trackButtonsContainer
   }
   
   return dialog
@@ -324,6 +367,7 @@ setupPattern = function()
     patternPlayCount = 0
     patternSetCount = 1
     userInitiatedFill = false
+    vbp.views.fill_button.color = {1, 1, 1}
     
     for t=1, #dst.tracks do
       -- Only for note tracks
@@ -343,6 +387,7 @@ setupPattern = function()
     -- If we're back at the start, the user initiated fill needs to be reset:
     if patternPlayCount % patternSetCount == 0 then
       userInitiatedFill = false
+      vbp.views.fill_button.color = {1, 1, 1}
     end
     
     -- Update pattern
