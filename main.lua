@@ -35,7 +35,6 @@ reset = function()
   patternSetCount = 1
   trackLengths = {}
   userInitiatedFill = false
-  -- vbp.views.fill_button.color = {1, 1, 1}
 end
 
 -- Pattern indicator
@@ -127,14 +126,12 @@ toggleMute = function(trackIndex)
     trackState[trackIndex].unmuteCounter.value = 0
     trackState[trackIndex].muted.value = false
     trackState[trackIndex].mutedColumnCount.value = 0
-    -- Unmute all columns:
-    
+    -- Unmute all columns?
   end
   setTrackButtonColor(trackIndex)
 end
 
 createTrackButton = function(trackIndex)
-  -- local track = song.tracks[trackIndex]
   local button = vbp:button {
     id = "track_button_" .. trackIndex,
     text = "-",
@@ -222,18 +219,6 @@ local updateTrackButton = function(trackIndex)
   end
 end
 
---[[
-local trackButtons = vbp:column {
-  id = "track_buttons"
-}
-
-local trackButtonsContainer = vbp:column {
-  id = "track_buttons_container"
-}
-
-trackButtonsContainer:add_child(trackButtons)
-]]--
-
 local playButton = vbp:button {
   id = "transport_button",
   text = "Play",
@@ -259,62 +244,6 @@ local playButton = vbp:button {
     end
   end
 }
-
---[[
-local fillButton = vbp:button {
-  id = "fill_button",
-  text = "Fill",
-  width = buttonSize,
-  height = buttonSize,
-  pressed = trigger_fill,
-  color = {1, 1, 1}
-}
-]]--
-
---[[
-createTrackButtons = function()
-  return vbp:column {
-    id = "track_buttons",
-    margin = 1,
-    vbp:horizontal_aligner {
-      id = "track_buttons_row1",
-      margin = 1,
-      mode = "justify",
-      createTrackButton(1),
-      createTrackButton(2),
-      createTrackButton(3),
-      createTrackButton(4)
-    },
-    vbp:horizontal_aligner {
-      id = "track_buttons_row2",
-      margin = 1,
-      mode = "justify",
-      createTrackButton(5),
-      createTrackButton(6),
-      createTrackButton(7),
-      createTrackButton(8)
-    },
-    vbp:horizontal_aligner {
-      id = "track_buttons_row3",
-      margin = 1,
-      mode = "justify",
-      createTrackButton(9),
-      createTrackButton(10),
-      createTrackButton(11),
-      createTrackButton(12)
-    },
-    vbp:horizontal_aligner {
-      id = "track_buttons_row4",
-      margin = 1,
-      mode = "justify",
-      createTrackButton(13),
-      createTrackButton(14),
-      createTrackButton(15),
-      createTrackButton(16)
-    },
-  }
-end
-]]--
 
 -- Dialog structure:
 --
@@ -750,20 +679,6 @@ local dialog_content = nil
 
 function showDialog()
   if not dialog or not dialog.visible then
-    -- Re-create track buttons:
-    --[[
-    local tbContainer = vbp.views.track_buttons_container
-    local tb = vbp.views.track_buttons
-    if tb ~= nil then
-      tbContainer:remove_child(tb)
-      vbp.views.track_buttons = nil
-    end
-    
-    for i=1, 16 do
-      vbp.views["track_button_" .. i] = nil
-    end
-    tbContainer:add_child(createTrackButtons())
-    ]]--
     -- create, or re-create if hidden
     if not dialog_content then
       dialog_content = createDialog() -- run only once
