@@ -24,7 +24,7 @@ local patternPlayCount = 0
 local patternSetCount = 1   -- How many patterns in a "set"
 local trackLengths = {}     -- Remember the individual lengths of tracks
 local userInitiatedFill = false
-local buttonSize = 80
+local buttonSize = 96
 
 reset = function()
   currLine = 0
