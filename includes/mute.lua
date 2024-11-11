@@ -1,6 +1,6 @@
 -- Determine if the muted-flag should be true or false, or unchanged (null)
 isMuted = function(effectAmount, trackPlayCount)
-  if patternPlayCount == 0 then
+  if trackPlayCount == 0 then
     return true
   end
 
@@ -8,7 +8,7 @@ isMuted = function(effectAmount, trackPlayCount)
     return nil
   end
 
-  if patternPlayCount == effectAmount then
+  if trackPlayCount == effectAmount - 1 then
     return false
   end
 

@@ -26,3 +26,30 @@ is_fill = function(currPattern, nextPattern, patternPlayCount, patternSetCount, 
   return true
 end
 
+-- Determine if there is a fill
+-- Returns true if the note is to be kept, false if the note is to be cleared
+isFillActive = function(isTransitioning, trackPlayCount, trackSetCount, amountString, userInitiatedFill)
+  -- Remove the not playing ones:
+  if isTransitioning or userInitiatedFill == true then
+    -- Transition to another pattern
+    -- Check if we're in the last run of the set:
+    if (trackPlayCount + 1) % trackSetCount == 0 then
+      -- We're in a the last pattern play of the transition, filter out "00"
+      if amountString == "00" then
+        return false
+      end
+    else
+      -- We're not yet in the last pattern of the transition yet, filter out "01"
+      if amountString == "01" then
+        return false
+      end
+    end
+  else
+    -- No transition to another pattern, filter out "01"
+    if amountString == "01" then
+      return false
+    end
+  end
+  
+  return true
+end

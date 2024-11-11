@@ -39,6 +39,7 @@ reset = function()
   patternSetCount = 1
   trackLengths = {}
   userInitiatedFill = false
+  stepCount = 0
 end
 
 -- Pattern indicator
@@ -77,7 +78,7 @@ nextPattern:add_notifier(updatePatternIndicator)
 local queue_next_pattern = function()
   if nextPattern.value < song.transport.song_length.sequence - 1 then
     nextPattern.value = nextPattern.value + 1
-    updatePattern()
+    -- updatePattern()
   end
 end
 
@@ -85,7 +86,7 @@ end
 local queue_previous_pattern = function()
   if nextPattern.value > 1 then
     nextPattern.value = nextPattern.value - 1
-    updatePattern()
+    -- updatePattern()
   end
 end
 
@@ -94,7 +95,7 @@ local trigger_fill = function()
   userInitiatedFill = true
   vbp.views.fill_button.color = {255, 255, 255}
   updatePatternIndicator()
-  updatePattern()   
+  -- updatePattern()   
 end
 
 -- Keep state of the tracks (mute status, etc.)
@@ -403,14 +404,14 @@ setupPattern = function()
     -- Always start with masterTrackLength    
     for t=1, #dst.tracks do
       if song.tracks[t].type == renoise.Track.TRACK_TYPE_SEQUENCER or song.tracks[t].type == renoise.Track.TRACK_TYPE_MASTER then
-        trackLengths[t] = masterTrackLength
-        -- trackLengths[t] = getPatternTrackLength(src:track(t))
+        -- trackLengths[t] = masterTrackLength
+        trackLengths[t] = getPatternTrackLength(src:track(t))
       end
     end
     
     currPattern.value = nextPattern.value
 
-    updatePattern()
+    -- updatePattern()
     updatePatternIndicator()
   else
     -- Update play count
@@ -423,14 +424,13 @@ setupPattern = function()
     end
     
     -- Update pattern
-    updatePattern()
+    -- updatePattern()
     if patternSetCount > 1 then
       updatePatternIndicator()
     end
   end
 end
 
---[[
 -- Get the length of an individual track (based on it's cutoff point)
 getPatternTrackLength = function(patternTrack)
   local dst = song:pattern(1)
@@ -445,8 +445,8 @@ getPatternTrackLength = function(patternTrack)
   end
   return number_of_lines
 end
-]]--
 
+--[[
 -- Check for transition fills. These are triggered when a transition is going to happen from one pattern to the other
 updatePattern = function()
   -- Benchmark
@@ -569,6 +569,7 @@ updatePattern = function()
     print(string.format("updatePattern() - function elapsed time: %.4f\n", os.clock() - time))
   end
 end
+]]--
 
 local resetTriggerLights = false
 
@@ -600,22 +601,16 @@ local function stepNotifier()
       trackState, 
       trackLengths,
       stepCount, 
-      masterTrackLength
+      currPattern.value ~= nextPattern.value
     )
   end
+  
   stepCount = stepCount + 1
 
   -- Check for pattern change:
-  --[[
-  if currLine == song.patterns[1].number_of_lines - 1 then
-    if currPattern.value ~= nextPattern.value then
-      -- Add a "ZB00" the the last line of the master track, so the next pattern will start at 0
-    end
-  elseif currLine == song.patterns[1].number_of_lines then
-    -- Change patterns:
+  if currLine == masterTrackLength then
     setupPattern()
   end
-  ]]--
   
   -- Show trig indicator:
   -- TODO: Performance check on RPI:
@@ -648,7 +643,6 @@ local function idleObserver()
       for key in pairs(trackState) do
         local trackData = trackState[key]
         if trackData.track ~= nil then
-          -- local line = song:pattern(1):track(trackData.track):line(currLine)
           trackState[key].trigged.value = false
         end
       end
@@ -663,8 +657,6 @@ local function key_handler(dialog, key)
    queue_previous_pattern()
   elseif key.name == "right" then
     queue_next_pattern()
-  elseif key.name == "f" then
-    trigger_fill()
   elseif key.name == "esc" then
     dialog:close()
   elseif key.name == "1" then
@@ -699,6 +691,8 @@ local function key_handler(dialog, key)
     toggleMute(15)
   elseif key.name == "i" then
     toggleMute(16)
+  elseif key.name == "f" then
+    trigger_fill()
   end
 end
 
