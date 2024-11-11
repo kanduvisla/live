@@ -27,7 +27,7 @@ This basically means that you need to use Renoise in a slightly different way th
 
 This tool adds the following effects to the pattern editor:
 
-- The following effects are applicable to both **columns** and **tracks**:
+- The following effects are applicable to both **columns** and **tracks** in the sequencer:
     - Note t**r**iggers (`ZR` and `ZI`)
         - `ZR01` : Only play the first run of this pattern.
         - `ZR00` : Don't play the first run of this pattern.
@@ -44,15 +44,16 @@ This tool adds the following effects to the pattern editor:
     - **M**uting (`ZM`)
         - `ZM00` : Start track muted
         - `ZMxx` : Unmute after `xx` runs (in dec)
-- The following effects are applicable to **only tracks**:
-    - Automatically set **n**ext pattern (`ZN`)
-        - `ZNxx` : Set pattern `xx` (in dec) to be the next one in the queue.
-    - Set pattern **p**lay count (`ZP`)
-        - `ZPxx` : Set pattern play count to `xx` (transitions will be triggered in the last count). When a next pattern is queued, the current pattern plays a full `xx` runs. For example: a 16-bar pattern with `ZP04` will always play in sets of 4, but you can already queue it on the first run. Fills will be triggered in the last run.
+- The following effects are applicable to **only tracks** in the sequencer:
     - **C**utoff pattern (useful to generate polymeter / polyrhythms) (`ZC`)
         - `ZC00` : Cut off (and repeat) the pattern from this point. This is up to but not included, so a cut on line 4 would repeat lines 1,2 and 3; effectively creating a [polyrhythm](https://en.wikipedia.org/wiki/Polyrhythm). 
             - Triggs (`ZR`) and inverted triggs (`ZI`) are supported when a track uses `ZC`
             - Fills (`ZF`) and muting (`ZM`) are not supported when a track uses `ZC`
+- The following effects are applicable only to **the master track**:
+    - Automatically set **n**ext pattern (`ZN`)
+        - `ZNxx` : Set pattern `xx` (in dec) to be the next one in the queue.
+    - Set pattern **p**lay count (`ZP`)
+        - `ZPxx` : Set pattern play count to `xx` (transitions will be triggered in the last count). When a next pattern is queued, the current pattern plays a full `xx` runs. For example: a 16-bar pattern with `ZP04` will always play in sets of 4, but you can already queue it on the first run. Fills will be triggered in the last run.
 
 ## Keyboard shortcuts
 
@@ -78,10 +79,14 @@ This is a rough lists of ideas that I want to add to this plugin in the future:
 - "Break" mute / fill (mute (a group?), do a fill and then unmute again)
 - Force unmute
 - Stutter / randomize track
+    - Stutter = hold down button on UI
+    - Randomize = button on UI
 - Muting Groups - where you can mute/unmute multiple tracks at once
 - Track playback speed (1/2, 1/3, 1/4, 1/8, 1/16, 1/32, 1/64)
     - Also stretch delay column
     - suggestion: `ZSxx`
+- UI Button to nudge sequence forward or backward
+- UI Button to raise or lower scale
 - One tap on stop should not reset pattern, stop while stop should
 - External midi syncing / queueing
 - More optimizations (any help is welcome)

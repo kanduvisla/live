@@ -2,13 +2,14 @@ require("includes/track_play_count")
 require("includes/note_triggers")
 require("includes/cutoff_points")
 require("includes/fill")
+require("includes/process_line")
 
 -- Some basic vars for reuse:
 local app = renoise.app()
 local tool = renoise.tool()
 local song = nil
 local doc = renoise.Document
-local benchmark = true   -- Output benchmarking information to the console, for dev purposes
+local benchmark = false   -- Output benchmarking information to the console, for dev purposes
 
 -- View Builder for preferences and set scale
 local vbp = renoise.ViewBuilder()
@@ -18,13 +19,16 @@ local vbwp = vbp.views
 -- Variables used:
 local currLine = 0
 local prevLine = -1
-local currPattern = doc.ObservableNumber(0)
+local currPattern = doc.ObservableNumber(1)
 local nextPattern = doc.ObservableNumber(1)
 local patternPlayCount = 0
+local masterTrackLength = 0
+local stepCount = 0
 local patternSetCount = 1   -- How many patterns in a "set"
 local trackLengths = {}     -- Remember the individual lengths of tracks
 local userInitiatedFill = false
 local buttonSize = 96
+local src                   -- Source pattern
 
 reset = function()
   currLine = 0
@@ -383,20 +387,24 @@ setupPattern = function()
   local dst = song:pattern(1)
   if nextPattern.value ~= currPattern.value and (patternPlayCount + 1) % patternSetCount == 0 then
     -- Prepare a new pattern
-    local src = song:pattern(nextPattern.value + 1)
-    dst.number_of_lines = src.number_of_lines
-    dst:copy_from(src)
+    src = song:pattern(nextPattern.value + 1)
+    masterTrackLength = src.number_of_lines
+    
+    -- Pattern 0 is always steps. The script always pastes new data to the next line
+    dst.number_of_lines = 16
+    -- dst:copy_from(src)
 
     -- Reset some stuff:
     patternPlayCount = 0
     patternSetCount = 1
     userInitiatedFill = false
     vbp.views.fill_button.color = {1, 1, 1}
-    
+
+    -- Always start with masterTrackLength    
     for t=1, #dst.tracks do
-      -- Only for note tracks
-      if song.tracks[t].type == 1 then
-        trackLengths[t] = getPatternTrackLength(dst:track(t))
+      if song.tracks[t].type == renoise.Track.TRACK_TYPE_SEQUENCER or song.tracks[t].type == renoise.Track.TRACK_TYPE_MASTER then
+        trackLengths[t] = masterTrackLength
+        -- trackLengths[t] = getPatternTrackLength(src:track(t))
       end
     end
     
@@ -422,6 +430,7 @@ setupPattern = function()
   end
 end
 
+--[[
 -- Get the length of an individual track (based on it's cutoff point)
 getPatternTrackLength = function(patternTrack)
   local dst = song:pattern(1)
@@ -436,6 +445,7 @@ getPatternTrackLength = function(patternTrack)
   end
   return number_of_lines
 end
+]]--
 
 -- Check for transition fills. These are triggered when a transition is going to happen from one pattern to the other
 updatePattern = function()
@@ -562,6 +572,7 @@ end
 
 local resetTriggerLights = false
 
+-- A little helper method to determine if a TrackLine has a note
 local function hasNote(line)
   for _, note_column in ipairs(line.note_columns) do
     if note_column.note_value ~= renoise.PatternLine.EMPTY_NOTE then
@@ -572,7 +583,7 @@ local function hasNote(line)
   return false
 end
 
--- Add notifier each time the loop ends:
+-- Notifier each time the a note has played, so the next step can be prepared:
 local function stepNotifier()
   -- Benchmark
   local time
@@ -580,7 +591,22 @@ local function stepNotifier()
     time = os.clock()
   end
 
+  -- Process the next line:
+  if src ~= nil then
+    processLine(
+      song,
+      (currLine % masterTrackLength) + 1, -- dst line
+      src,                                 
+      trackState, 
+      trackLengths,
+      stepCount, 
+      masterTrackLength
+    )
+  end
+  stepCount = stepCount + 1
+
   -- Check for pattern change:
+  --[[
   if currLine == song.patterns[1].number_of_lines - 1 then
     if currPattern.value ~= nextPattern.value then
       -- Add a "ZB00" the the last line of the master track, so the next pattern will start at 0
@@ -589,6 +615,7 @@ local function stepNotifier()
     -- Change patterns:
     setupPattern()
   end
+  ]]--
   
   -- Show trig indicator:
   -- TODO: Performance check on RPI:
@@ -614,13 +641,14 @@ local function idleObserver()
   if song ~= nil then
     currLine = song.transport.playback_pos.line
     if song.transport.playing and currLine ~= prevLine then
+      -- currLine has just played, prepare the following line
       stepNotifier()
       prevLine = currLine
     elseif resetTriggerLights == true then
       for key in pairs(trackState) do
         local trackData = trackState[key]
         if trackData.track ~= nil then
-          local line = song:pattern(1):track(trackData.track):line(currLine)
+          -- local line = song:pattern(1):track(trackData.track):line(currLine)
           trackState[key].trigged.value = false
         end
       end
