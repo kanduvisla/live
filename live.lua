@@ -22,19 +22,23 @@ local trackData = {}
 
 -- Initialize
 function Live:new(song)
-  self.song = song
+  local instance = setmetatable({}, Live)
+
+  instance.song = song
   -- Prepare dialog:
-  self.dialog = Dialog:new(
+  instance.dialog = Dialog:new(
     song,
-    self.onTrackButtonPressed,
-    self.onFillButtonPressed,
-    self.onStartStopButtonPressed,
-    self.onPrevButtonPressed,
-    self.onNextButtonPressed
+    instance.onTrackButtonPressed,
+    instance.onFillButtonPressed,
+    instance.onStartStopButtonPressed,
+    instance.onPrevButtonPressed,
+    instance.onNextButtonPressed
   )
   -- Set observers:
-  renoise.tool().app_idle_observable:add_notifier(self.idleObserver)
-  nextPattern:add_notifier(self.updatePatternIndicator)
+  renoise.tool().app_idle_observable:add_notifier(instance.idleObserver)
+  nextPattern:add_notifier(instance.updatePatternIndicator)
+
+  return instance
 end
 
 -- Called when a new song is loaded, or when the dialog is re-opened
@@ -59,11 +63,11 @@ end
 
 -- Setup pattern, this is called when the dialog opens, and every time a new pattern begins.
 function Live:setupPattern()
-  local dst = song:pattern(1)
+  local dst = self.song:pattern(1)
 
   if nextPattern.value ~= currPattern.value and (patternPlayCount + 1) % patternSetCount == 0 then
     -- Prepare a new pattern
-    srcPattern = song:pattern(nextPattern.value + 1)
+    srcPattern = self.song:pattern(nextPattern.value + 1)
     masterTrackLength = srcPattern.number_of_lines
     
     -- Pattern 0 is always 16 steps. The script always pastes new data to the next line
@@ -73,15 +77,15 @@ function Live:setupPattern()
     patternPlayCount = 0
     patternSetCount = 1
     userInitiatedFill = false
-    dialog:setFillButtonState(false)
+    self.dialog:setFillButtonState(false)
 
     -- Get track data of individual tracks:
-    for t=1, #dst.tracks do
-      if song.tracks[t].type == renoise.Track.TRACK_TYPE_SEQUENCER or song.tracks[t].type == renoise.Track.TRACK_TYPE_MASTER then
-        trackData[t] = TrackData:new(
-          trackIndex: t,
-          trackLength: self:getPatternTrackLength(srcPattern, t),
-          srcPattern: srcPattern
+    for trackIndex=1, #dst.tracks do
+      if self.song.tracks[trackIndex].type == renoise.Track.TRACK_TYPE_SEQUENCER or self.song.tracks[trackIndex].type == renoise.Track.TRACK_TYPE_MASTER then
+        trackData[trackIndex] = TrackData:new(
+          trackIndex,
+          self:getPatternTrackLength(srcPattern, t),
+          srcPattern
         )
       end
     end
@@ -96,7 +100,7 @@ function Live:setupPattern()
     -- If we're back at the start, the user initiated fill needs to be reset:
     if patternPlayCount % patternSetCount == 0 then
       userInitiatedFill = false
-      dialog:setFillButtonState(false)
+      self.dialog:setFillButtonState(false)
     end
     
     if patternSetCount > 1 then
@@ -123,14 +127,14 @@ end
 
 -- Idle observer
 function Live:idleObserver()
-  if self.song ~= nil then
+  if self ~= nil and self.song ~= nil then
     currLine = song.transport.playback_pos.line
     if song.transport.playing and currLine ~= prevLine then
       -- currLine has just played, prepare the following line
       self:stepNotifier()
       prevLine = currLine
     elseif resetTriggerLights == true then
-      dialog:resetTriggerLights()
+      self.dialog:resetTriggerLights()
       resetTriggerLights = false
     end
   end
@@ -172,8 +176,8 @@ function Live:stepNotifier()
   -- TODO: Performance check on RPI:
   for key in pairs(trackData) do
     local trackIndex = trackData[key].trackIndex
-    local line = song:pattern(1):track(trackIndex):line(currLine)
-    dialog:setTriggerLight(trackIndex, self:hasNote(line))
+    local line = self.song:pattern(1):track(trackIndex):line(currLine)
+    self.dialog:setTriggerLight(trackIndex, self:hasNote(line))
   end
   resetTriggerLights = true
 
@@ -203,10 +207,10 @@ end
 
 -- Show the dialog
 function Live:showDialog()
-  self:updatePatternIndicator()
-  self:reset(self.song)
   self:setupPattern()
   self.dialog:show()
+  self:reset(self.song)
+  self:updatePatternIndicator()
 end
 
 -- Queue the next pattern
@@ -231,7 +235,7 @@ end
 -- Called when the fill button is pressed
 function Live:onFillButtonPressed()
   userInitiatedFill = true
-  dialog:setFillButtonState(true)
+  self.dialog:setFillButtonState(true)
   self:updatePatternIndicator()
 end
 

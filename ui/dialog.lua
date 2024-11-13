@@ -19,13 +19,17 @@ function Dialog:new(
   onPrevButtonPressed,
   onNextButtonPressed
 )
-  self.song = song
-  self.trackState = trackState
-  self.onTrackButtonPressed = onTrackButtonPressed
-  self.onFillButtonPressed = onFillButtonPressed
-  self.onStartStopButtonPressed = onStartStopButtonPressed
-  self.onPrevButtonPressed = onPrevButtonPressed
-  self.onNextButtonPressed = onNextButtonPressed
+  local instance = setmetatable({}, Dialog)
+
+  instance.song = song
+  instance.trackState = trackState
+  instance.onTrackButtonPressed = onTrackButtonPressed
+  instance.onFillButtonPressed = onFillButtonPressed
+  instance.onStartStopButtonPressed = onStartStopButtonPressed
+  instance.onPrevButtonPressed = onPrevButtonPressed
+  instance.onNextButtonPressed = onNextButtonPressed
+
+  return instance
 end
 
 -- Create Track button
@@ -162,20 +166,21 @@ function Dialog:createPlayButton()
       self:updatePlayButton()
     end
   }
-  self:updatePlayButton()
 
   return button
 end
 
 -- Update the playbutton
 function Dialog:updatePlayButton()
-  local button = vbp.view.transport_button
-  if song.transport.playing then
-    vbp.views.transport_button.text = "Stop"
-    vbp.views.transport_button.color = {128, 0, 0}
-  else
-    vbp.views.transport_button.text = "Play"
-    vbp.views.transport_button.color = {0, 128, 0}
+  local button = vbp.views.transport_button
+  if button ~= nil then
+    if self.song.transport.playing then
+      button.text = "Stop"
+      button.color = {128, 0, 0}
+    else
+      button.text = "Play"
+      button.color = {0, 128, 0}
+    end
   end
 end
 
@@ -195,6 +200,7 @@ end
 -- Update Pattern Indicator
 function Dialog:updatePatternIndicator(currPattern, nextPattern, patternPlayCount, patternSetCount, userInitiatedFill)
   local patternIndicatorView = vbp.views.pattern_indicator
+
   if currPattern.value ~= nextPattern.value then
     patternIndicatorView.text = string.format(
       "%s → %s (%s/%s)", 
@@ -284,7 +290,7 @@ function Dialog:createDialog()
           text = "Fill",
           width = buttonSize,
           height = buttonSize,
-          pressed = self.onFillButtonPressed
+          pressed = self.onFillButtonPressed,
           color = {1, 1, 1}
         },
         vbp:button {
@@ -351,11 +357,13 @@ end
 function Dialog:setFillButtonState(active)
   local button = vbp.views.fill_button
 
-  if active == true then
-    button.color = {255, 255, 255}
-  else
-    button.color = {1, 1, 1}
-  end  
+  if button ~= nil then
+    if active == true then
+      button.color = {255, 255, 255}
+    else
+      button.color = {1, 1, 1}
+    end  
+  end
 end
 
 -- Reset the dialog
@@ -369,7 +377,7 @@ function Dialog:reset(song)
 end
 
 -- Handler for key presses on the dialog
-function Dialog:keyHandler = function(dialog, key)
+function Dialog:keyHandler(dialog, key)
   if key.name == "left" then
     self:onPrevButtonPressed()
   elseif key.name == "right" then
@@ -435,10 +443,14 @@ function Dialog:show()
     if not dialogContent then
       dialogContent = self:createDialog() -- run only once
     end
-    -- Update the track buttons
+
+    -- Update the buttons
     for trackIndex = 1, 16 do
       self:updateTrackButton(trackIndex)
     end
+    self:updatePlayButton()
+    self:setFillButtonState(false)
+
     dialog = app:show_custom_dialog("Live", dialogContent, self.keyHandler)
   else
     -- bring existing/visible dialog to front
