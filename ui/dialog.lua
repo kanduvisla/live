@@ -1,7 +1,35 @@
+local Dialog = {}
+Dialog.__index = Dialog
+
+-- Private properties
 local doc = renoise.Document
+local app = renoise.app()
+local vbp = renoise.ViewBuilder()
+local buttonSize = 96
+local trackState = {}
+local dialog = nil
+local dialogContent = nil
+
+-- New instance to create an operate the dialog
+function Dialog:new(
+  song,
+  onTrackButtonPressed,
+  onFillButtonPressed,
+  onStartStopButtonPressed,
+  onPrevButtonPressed,
+  onNextButtonPressed
+)
+  self.song = song
+  self.trackState = trackState
+  self.onTrackButtonPressed = onTrackButtonPressed
+  self.onFillButtonPressed = onFillButtonPressed
+  self.onStartStopButtonPressed = onStartStopButtonPressed
+  self.onPrevButtonPressed = onPrevButtonPressed
+  self.onNextButtonPressed = onNextButtonPressed
+end
 
 -- Create Track button
-createTrackButton = function(vbp, buttonSize, trackState, trackIndex)
+function Dialog:createTrackButton(trackIndex)
   local button = vbp:button {
     id = "track_button_" .. trackIndex,
     text = "-",
@@ -10,11 +38,12 @@ createTrackButton = function(vbp, buttonSize, trackState, trackIndex)
     height = buttonSize,
     active = false,
     pressed = function() 
-      toggleMute(trackIndex)
+      self.onTrackButtonPressed(trackIndex)
     end
   }
 
-  trackState[trackIndex] = {
+  -- Prepare track state:
+  self.trackState[trackIndex] = {
     track = nil,
     trackName = "-",
     trackColor = {0, 0, 0},
@@ -25,23 +54,23 @@ createTrackButton = function(vbp, buttonSize, trackState, trackIndex)
   }
 
   local function setButtonText()
-    local trackName = trackState[trackIndex].trackName
+    local trackName = self.trackState[trackIndex].trackName
     
-    if trackState[trackIndex].unmuteCounter.value > 0 then
+    if self.trackState[trackIndex].unmuteCounter.value > 0 then
       button.text = string.format(
         "%s\n%s\n(M:%s)", 
         trackIndex, 
         trackName, 
-        trackState[trackIndex].unmuteCounter.value
+        self.trackState[trackIndex].unmuteCounter.value
       )  
-    elseif trackState[trackIndex].muted.value == true then
+    elseif self.trackState[trackIndex].muted.value == true then
       button.text = string.format("%s\n%s\n(M)", trackIndex, trackName)
-    elseif trackState[trackIndex].mutedColumnCount.value > 0 then
+    elseif self.trackState[trackIndex].mutedColumnCount.value > 0 then
       button.text = string.format(
         "%s\n%s\n(MC:%s)", 
         trackIndex, 
         trackName,
-        trackState[trackIndex].mutedColumnCount.value
+        self.trackState[trackIndex].mutedColumnCount.value
       )
     else        
       button.text = string.format("%s\n%s", trackIndex, trackName)
@@ -49,25 +78,42 @@ createTrackButton = function(vbp, buttonSize, trackState, trackIndex)
   end
   
   -- Observer for the mute button change color behavior
-  trackState[trackIndex].unmuteCounter:add_notifier(setButtonText)
-  trackState[trackIndex].muted:add_notifier(setButtonText)
-  trackState[trackIndex].mutedColumnCount:add_notifier(setButtonText)
+  self.trackState[trackIndex].unmuteCounter:add_notifier(setButtonText)
+  self.trackState[trackIndex].muted:add_notifier(setButtonText)
+  self.trackState[trackIndex].mutedColumnCount:add_notifier(setButtonText)
     
   -- Observer for the blinking Indicator
-  trackState[trackIndex].trigged:add_notifier(function()
-    setTrackButtonColor(trackIndex)  
+  self.trackState[trackIndex].trigged:add_notifier(function()
+    self:setTrackButtonColor(trackIndex)  
   end)
   
   return button
 end
 
--- Update Track Button
-updateTrackButton = function(vbp, trackIndex)
-  local track = song.tracks[trackIndex]
+-- Update the Track Button Color according to it's state
+function Dialog:updateTrackButtonColor(trackIndex)
   local button = vbp.views["track_button_" .. trackIndex]
   
-  if track == nil or track.type ~= 1 then
-    trackState[trackIndex].track = nil
+  if self.trackState[trackIndex].trigged.value == true then
+    if self.trackState[trackIndex].muted.value == true then
+      button.color = {255, 0, 0}
+    else 
+      button.color = {128, 200, 0}
+    end
+  elseif self.trackState[trackIndex].muted.value == true then
+    button.color = {200, 0, 0}
+  else 
+    button.color = self.trackState[trackIndex].trackColor
+  end
+end
+
+-- Update Track Button
+function Dialog:updateTrackButton(trackIndex)
+  local track = self.song.tracks[trackIndex]
+  local button = vbp.views["track_button_" .. trackIndex]
+  
+  if track == nil or track.type ~= renoise.Track.TRACK_TYPE_SEQUENCER then
+    self.trackState[trackIndex].track = nil
     
     button.text = "-"
     button.color = {0, 0, 0}
@@ -76,13 +122,13 @@ updateTrackButton = function(vbp, trackIndex)
     local trackName = track.name
     local trackColor = track.color
     
-    trackState[trackIndex].track = trackIndex
-    trackState[trackIndex].trackName = trackName
-    trackState[trackIndex].trackColor = trackColor
-    trackState[trackIndex].muted.value = track.mute_state ~= renoise.Track.MUTE_STATE_ACTIVE
-    trackState[trackIndex].unmuteCounter.value = 0
-    trackState[trackIndex].trigged.value = false
-    trackState[trackIndex].mutedColumnCount.value = 0
+    self.trackState[trackIndex].track = trackIndex
+    self.trackState[trackIndex].trackName = trackName
+    self.trackState[trackIndex].trackColor = trackColor
+    self.trackState[trackIndex].muted.value = track.mute_state ~= renoise.Track.MUTE_STATE_ACTIVE
+    self.trackState[trackIndex].unmuteCounter.value = 0
+    self.trackState[trackIndex].trigged.value = false
+    self.trackState[trackIndex].mutedColumnCount.value = 0
   
     button.color = trackColor
     button.active = true
@@ -90,8 +136,51 @@ updateTrackButton = function(vbp, trackIndex)
   end
 end
 
+-- Create the play/stop button
+function Dialog:createPlayButton()
+  local button = vbp:button {
+    id = "transport_button",
+    text = "Play",
+    width = buttonSize,
+    height = buttonSize,
+    color = {0, 128, 0},
+    pressed = function()
+      if song.transport.playing then
+        song.transport:stop()
+        self:onStartStopButtonPressed()
+--        reset()
+--        setupPattern()
+      else
+        -- Play pattern 0 in loop
+--        currPattern.value = 1
+--        nextPattern.value = 1
+        song.transport.loop_pattern = true
+        local song_pos = renoise.SongPos(1, 1)
+        song.transport:start_at(song_pos)
+        self:onStartStopButtonPressed()
+      end
+      self:updatePlayButton()
+    end
+  }
+  self:updatePlayButton()
+
+  return button
+end
+
+-- Update the playbutton
+function Dialog:updatePlayButton()
+  local button = vbp.view.transport_button
+  if song.transport.playing then
+    vbp.views.transport_button.text = "Stop"
+    vbp.views.transport_button.color = {128, 0, 0}
+  else
+    vbp.views.transport_button.text = "Play"
+    vbp.views.transport_button.color = {0, 128, 0}
+  end
+end
+
 -- Pattern indicator
-createPatternIndicator = function(vbp, buttonSize)
+function Dialog:createPatternIndicator()
   return vbp:text {
     id = "pattern_indicator",
     text =  "-",
@@ -104,7 +193,7 @@ createPatternIndicator = function(vbp, buttonSize)
 end
 
 -- Update Pattern Indicator
-updatePatternIndicator = function(vbp, currPattern, nextPattern)
+function Dialog:updatePatternIndicator(currPattern, nextPattern, patternPlayCount, patternSetCount, userInitiatedFill)
   local patternIndicatorView = vbp.views.pattern_indicator
   if currPattern.value ~= nextPattern.value then
     patternIndicatorView.text = string.format(
@@ -139,7 +228,7 @@ end
 -- |       4       |
 -- `---------------`
 --
-createDialog = function(vbp, buttonSize, trackState)
+function Dialog:createDialog()
   local dialog = vbp:column {
     id = "container",
     margin = 0,
@@ -153,37 +242,37 @@ createDialog = function(vbp, buttonSize, trackState)
           id = "track_buttons_row1",
           margin = 0,
           mode = "justify",
-          createTrackButton(vbp, buttonSize, trackState, 1),
-          createTrackButton(vbp, buttonSize, trackState, 2),
-          createTrackButton(vbp, buttonSize, trackState, 3),
-          createTrackButton(vbp, buttonSize, trackState, 4)
+          self:createTrackButton(1),
+          self:createTrackButton(3),
+          self:createTrackButton(2),
+          self:createTrackButton(4)
         },
         vbp:horizontal_aligner {
           id = "track_buttons_row2",
           margin = 0,
           mode = "justify",
-          createTrackButton(vbp, buttonSize, trackState, 5),
-          createTrackButton(vbp, buttonSize, trackState, 6),
-          createTrackButton(vbp, buttonSize, trackState, 7),
-          createTrackButton(vbp, buttonSize, trackState, 8)
+          self:createTrackButton(5),
+          self:createTrackButton(6),
+          self:createTrackButton(7),
+          self:createTrackButton(8)
         },
         vbp:horizontal_aligner {
           id = "track_buttons_row3",
           margin = 0,
           mode = "justify",
-          createTrackButton(vbp, buttonSize, trackState, 9),
-          createTrackButton(vbp, buttonSize, trackState, 10),
-          createTrackButton(vbp, buttonSize, trackState, 11),
-          createTrackButton(vbp, buttonSize, trackState, 12)
+          self:createTrackButton(9),
+          self:createTrackButton(10),
+          self:createTrackButton(11),
+          self:createTrackButton(12)
         },
         vbp:horizontal_aligner {
           id = "track_buttons_row4",
           margin = 0,
           mode = "justify",
-          createTrackButton(vbp, buttonSize, trackState, 13),
-          createTrackButton(vbp, buttonSize, trackState, 14),
-          createTrackButton(vbp, buttonSize, trackState, 15),
-          createTrackButton(vbp, buttonSize, trackState, 16)
+          self:createTrackButton(13),
+          self:createTrackButton(14),
+          self:createTrackButton(15),
+          self:createTrackButton(16)
         },
       },
       vbp:column {
@@ -195,7 +284,7 @@ createDialog = function(vbp, buttonSize, trackState)
           text = "Fill",
           width = buttonSize,
           height = buttonSize,
-          pressed = trigger_fill,
+          pressed = self.onFillButtonPressed
           color = {1, 1, 1}
         },
         vbp:button {
@@ -228,7 +317,7 @@ createDialog = function(vbp, buttonSize, trackState)
       vbp:horizontal_aligner {
         margin = 0,
         mode = "justify",
-        playButton,
+        self:createPlayButton(),
         vbp:button {
           width = buttonSize,
           height = buttonSize,
@@ -241,15 +330,15 @@ createDialog = function(vbp, buttonSize, trackState)
           width = buttonSize,
           height = buttonSize,
           color = {1, 1, 1},
-          pressed = queue_previous_pattern
+          pressed = self.onPrevButtonPressed
         },
-        createPatternIndicator(),
+        self:createPatternIndicator(),
         vbp:button {
           text = "Next",
           width = buttonSize,
           height = buttonSize,
           color = {1, 1, 1},
-          pressed = queue_next_pattern
+          pressed = self.onNextButtonPressed
         }
       }
     }
@@ -257,4 +346,104 @@ createDialog = function(vbp, buttonSize, trackState)
   
   return dialog
 end
-  
+
+-- Set proper fill button color
+function Dialog:setFillButtonState(active)
+  local button = vbp.views.fill_button
+
+  if active == true then
+    button.color = {255, 255, 255}
+  else
+    button.color = {1, 1, 1}
+  end  
+end
+
+-- Reset the dialog
+function Dialog:reset(song)
+  self.song = song
+  self:updatePlayButton()
+  for trackIndex = 1, 16 do
+    self:updateTrackButton(trackIndex)
+  end
+  self:resetTriggerLights()
+end
+
+-- Handler for key presses on the dialog
+function Dialog:keyHandler = function(dialog, key)
+  if key.name == "left" then
+    self:onPrevButtonPressed()
+  elseif key.name == "right" then
+    self:onNextButtonPressed()
+  elseif key.name == "esc" then
+    dialog:close()
+  elseif key.name == "1" then
+    self:onTrackButtonPressed(1)
+  elseif key.name == "2" then
+    self:onTrackButtonPressed(2)
+  elseif key.name == "3" then
+    self:onTrackButtonPressed(3)
+  elseif key.name == "4" then
+    self:onTrackButtonPressed(4)
+  elseif key.name == "5" then
+    self:onTrackButtonPressed(5)
+  elseif key.name == "6" then
+    self:onTrackButtonPressed(6)
+  elseif key.name == "7" then
+    self:onTrackButtonPressed(7)
+  elseif key.name == "8" then
+    self:onTrackButtonPressed(8)
+  elseif key.name == "q" then
+    self:onTrackButtonPressed(9)
+  elseif key.name == "w" then
+    self:onTrackButtonPressed(10)
+  elseif key.name == "e" then
+    self:onTrackButtonPressed(11)
+  elseif key.name == "r" then
+    self:onTrackButtonPressed(12)
+  elseif key.name == "t" then
+    self:onTrackButtonPressed(13)
+  elseif key.name == "y" then
+    self:onTrackButtonPressed(14)
+  elseif key.name == "u" then
+    self:onTrackButtonPressed(15)
+  elseif key.name == "i" then
+    self:onTrackButtonPressed(16)
+  elseif key.name == "f" then
+    self:onFillButtonPressed()
+  end
+end
+
+-- Set the trigger light of a specific track index
+function Dialog:setTriggerLight(trackIndex, isEnabled)
+  trackState[trackIndex].trigged.value = isEnabled
+end
+
+-- Reset the trigger lights
+function Dialog:resetTriggerLights()
+  for key in pairs(trackState) do
+    local trackData = trackState[key]
+    if trackData.track ~= nil then
+      trackState[key].trigged.value = false
+    end
+  end
+end
+
+-- Show the dialog
+function Dialog:show()
+  if not dialog or not dialog.visible then
+    -- create, or re-create if hidden
+    if not dialogContent then
+      dialogContent = self:createDialog() -- run only once
+    end
+    -- Update the track buttons
+    for trackIndex = 1, 16 do
+      self:updateTrackButton(trackIndex)
+    end
+    dialog = app:show_custom_dialog("Live", dialogContent, self.keyHandler)
+  else
+    -- bring existing/visible dialog to front
+    dialog:show()
+  end
+end
+
+return Dialog

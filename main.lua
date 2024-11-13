@@ -1,8 +1,11 @@
+--[[
 require("includes/track_play_count")
 require("includes/note_triggers")
 require("includes/cutoff_points")
 require("includes/fill")
 require("includes/process_line")
+]]--
+local Live = require("live")
 
 -- Some basic vars for reuse:
 local app = renoise.app()
@@ -12,9 +15,9 @@ local doc = renoise.Document
 local benchmark = false   -- Output benchmarking information to the console, for dev purposes
 
 -- View Builder for preferences and set scale
-local vbp = renoise.ViewBuilder()
-local vbc = renoise.ViewBuilder
-local vbwp = vbp.views
+-- local vbp = renoise.ViewBuilder()
+-- local vbc = renoise.ViewBuilder
+-- local vbwp = vbp.views
 
 -- Variables used:
 local currLine = 0
@@ -27,9 +30,10 @@ local stepCount = 0
 local patternSetCount = 1   -- How many patterns in a "set"
 local trackLengths = {}     -- Remember the individual lengths of tracks
 local userInitiatedFill = false
-local buttonSize = 96
+-- local buttonSize = 96
 local src                   -- Source pattern
 
+--[[
 reset = function()
   currLine = 0
   prevLine = -1
@@ -41,7 +45,9 @@ reset = function()
   userInitiatedFill = false
   stepCount = 0
 end
+]]--
 
+--[[
 -- Pattern indicator
 local patternIndicatorView = vbp:text {
   text =  "-",
@@ -71,10 +77,12 @@ updatePatternIndicator = function()
     )
   end
 end
+]]--
 
-nextPattern:add_notifier(updatePatternIndicator)
+-- nextPattern:add_notifier(updatePatternIndicator)
 
 -- Queue the next pattern
+--[[
 local queue_next_pattern = function()
   if nextPattern.value < song.transport.song_length.sequence - 1 then
     nextPattern.value = nextPattern.value + 1
@@ -89,18 +97,22 @@ local queue_previous_pattern = function()
     -- updatePattern()
   end
 end
+]]--
 
 -- Trigger a fill
+--[[
 local trigger_fill = function()
   userInitiatedFill = true
   vbp.views.fill_button.color = {255, 255, 255}
   updatePatternIndicator()
   -- updatePattern()   
 end
+]]--
 
 -- Keep state of the tracks (mute status, etc.)
-local trackState = {}
+-- local trackState = {}
 
+--[[
 setTrackButtonColor = function(trackIndex)
   local button = vbp.views["track_button_" .. trackIndex]
   
@@ -116,6 +128,7 @@ setTrackButtonColor = function(trackIndex)
     button.color = trackState[trackIndex].trackColor
   end
 end
+]]--
 
 toggleMute = function(trackIndex)
   local track = song.tracks[trackIndex]
@@ -136,6 +149,7 @@ toggleMute = function(trackIndex)
   setTrackButtonColor(trackIndex)
 end
 
+--[[
 createTrackButton = function(trackIndex)
   local button = vbp:button {
     id = "track_button_" .. trackIndex,
@@ -382,7 +396,9 @@ createDialog = function()
   
   return dialog
 end
+]]--
 
+--[[
 -- Setup pattern, this is called every time a new pattern begins
 setupPattern = function()
   local dst = song:pattern(1)
@@ -391,7 +407,7 @@ setupPattern = function()
     src = song:pattern(nextPattern.value + 1)
     masterTrackLength = src.number_of_lines
     
-    -- Pattern 0 is always steps. The script always pastes new data to the next line
+    -- Pattern 0 is always 16 steps. The script always pastes new data to the next line
     dst.number_of_lines = 16
     -- dst:copy_from(src)
 
@@ -445,6 +461,7 @@ getPatternTrackLength = function(patternTrack)
   end
   return number_of_lines
 end
+]]--
 
 --[[
 -- Check for transition fills. These are triggered when a transition is going to happen from one pattern to the other
@@ -571,8 +588,9 @@ updatePattern = function()
 end
 ]]--
 
-local resetTriggerLights = false
+-- local resetTriggerLights = false
 
+--[[
 -- A little helper method to determine if a TrackLine has a note
 local function hasNote(line)
   for _, note_column in ipairs(line.note_columns) do
@@ -583,7 +601,9 @@ local function hasNote(line)
   
   return false
 end
+]]--
 
+--[[
 -- Notifier each time the a note has played, so the next step can be prepared:
 local function stepNotifier()
   -- Benchmark
@@ -630,7 +650,9 @@ local function stepNotifier()
     print(string.format("stepNotifier() - total elapsed time: %.4f\n", os.clock() - time))
   end
 end
+]]--
 
+--[[
 -- Idle observer
 local function idleObserver()
   if song ~= nil then
@@ -650,7 +672,9 @@ local function idleObserver()
     end
   end
 end
+]]--
 
+--[[
 -- Function to handle key presses
 local function key_handler(dialog, key)
   if key.name == "left" then
@@ -695,7 +719,9 @@ local function key_handler(dialog, key)
     trigger_fill()
   end
 end
+]]--
 
+--[[
 local dialog = nil
 local dialog_content = nil
 
@@ -714,7 +740,9 @@ function showDialog()
     dialog:show()
   end
 end
+]]--
 
+--[[
 -- Main window
 showMainWindow = function()
   if song == nil then
@@ -737,17 +765,21 @@ showMainWindow = function()
   
   setupPattern()
 end
+]]--
+
+local live = Live:new(renoise.song())
 
 -- Reset when a new project is loaded:
-renoise.tool().app_release_document_observable:add_notifier(function()
-  song = nil
+tool.app_release_document_observable:add_notifier(function()
+  live:reset(renoise.song())
 end)
 
 -- Add menu entry:
 tool:add_menu_entry {
   name = "Main Menu:Tools:Live",
   invoke = function()
-    showMainWindow()
+    live:showDialog()
+    -- showMainWindow()
   end
 }
 
