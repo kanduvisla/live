@@ -130,6 +130,7 @@ setTrackButtonColor = function(trackIndex)
 end
 ]]--
 
+--[[
 toggleMute = function(trackIndex)
   local track = song.tracks[trackIndex]
   if track == nil or track.type ~= 1 then
@@ -148,6 +149,7 @@ toggleMute = function(trackIndex)
   end
   setTrackButtonColor(trackIndex)
 end
+]]
 
 --[[
 createTrackButton = function(trackIndex)
@@ -767,19 +769,24 @@ showMainWindow = function()
 end
 ]]--
 
-local live = Live:new(renoise.song())
+local live
 
 -- Reset when a new project is loaded:
 tool.app_release_document_observable:add_notifier(function()
-  live:reset(renoise.song())
+  if live ~= nil then
+    live:reset(renoise.song())
+  end
 end)
 
 -- Add menu entry:
 tool:add_menu_entry {
   name = "Main Menu:Tools:Live",
   invoke = function()
+    if live == nil then
+      live = Live:new(renoise.song())
+    end
+    
     live:showDialog()
-    -- showMainWindow()
   end
 }
 

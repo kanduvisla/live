@@ -19,6 +19,7 @@ local stepCount = 0
 local masterTrackLength = 0
 local srcPattern
 local trackData = {}
+local _self
 
 -- Initialize
 function Live:new(song)
@@ -34,9 +35,12 @@ function Live:new(song)
     instance.onPrevButtonPressed,
     instance.onNextButtonPressed
   )
+  
   -- Set observers:
   renoise.tool().app_idle_observable:add_notifier(instance.idleObserver)
   nextPattern:add_notifier(instance.updatePatternIndicator)
+
+  _self = instance
 
   return instance
 end
@@ -84,7 +88,7 @@ function Live:setupPattern()
       if self.song.tracks[trackIndex].type == renoise.Track.TRACK_TYPE_SEQUENCER or self.song.tracks[trackIndex].type == renoise.Track.TRACK_TYPE_MASTER then
         trackData[trackIndex] = TrackData:new(
           trackIndex,
-          self:getPatternTrackLength(srcPattern, t),
+          self:getPatternTrackLength(srcPattern, trackIndex),
           srcPattern
         )
       end
@@ -227,9 +231,30 @@ function Live:queuePrevPattern()
   end
 end
 
--- Called when a track button is pressed
-function Live:onTrackButtonPressed(trackNumber)
+-- Toggle the mute state for a specific track
+function Live:toggleMute(trackIndex)
+  local track = self.song.tracks[trackIndex]
 
+  if track == nil or track.type ~= renoise.Track.TRACK_TYPE_SEQUENCER then
+    return
+  end
+  
+  if track.mute_state == renoise.Track.MUTE_STATE_ACTIVE then
+    track:mute()
+    self.dialog:setMutedStatus(trackIndex, true)
+  else
+    track:unmute()
+    self.dialog:setMutedStatus(trackIndex, false)
+    -- Unmute all columns?
+  end
+
+  self.dialog:updateTrackButtonColor(trackIndex)
+end
+
+-- Called when a track button is pressed
+function Live:onTrackButtonPressed(trackIndex)
+  -- Mute track:
+  _self:toggleMute(trackIndex)
 end
 
 -- Called when the fill button is pressed

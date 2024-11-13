@@ -41,8 +41,9 @@ function Dialog:createTrackButton(trackIndex)
     width = buttonSize,
     height = buttonSize,
     active = false,
-    pressed = function() 
-      self.onTrackButtonPressed(trackIndex)
+    pressed = function()
+      -- rprint(self.onTrackButtonPressed)
+      self:onTrackButtonPressed(trackIndex)
     end
   }
 
@@ -137,6 +138,8 @@ function Dialog:updateTrackButton(trackIndex)
     button.color = trackColor
     button.active = true
     button.text = string.format("%s\n%s", trackIndex, trackName)
+
+    self:updateTrackButtonColor(trackIndex)
   end
 end
 
@@ -149,8 +152,8 @@ function Dialog:createPlayButton()
     height = buttonSize,
     color = {0, 128, 0},
     pressed = function()
-      if song.transport.playing then
-        song.transport:stop()
+      if self.song.transport.playing then
+        self.song.transport:stop()
         self:onStartStopButtonPressed()
 --        reset()
 --        setupPattern()
@@ -158,11 +161,12 @@ function Dialog:createPlayButton()
         -- Play pattern 0 in loop
 --        currPattern.value = 1
 --        nextPattern.value = 1
-        song.transport.loop_pattern = true
+        self.song.transport.loop_pattern = true
         local song_pos = renoise.SongPos(1, 1)
-        song.transport:start_at(song_pos)
+        self.song.transport:start_at(song_pos)
         self:onStartStopButtonPressed()
       end
+
       self:updatePlayButton()
     end
   }
@@ -173,12 +177,13 @@ end
 -- Update the playbutton
 function Dialog:updatePlayButton()
   local button = vbp.views.transport_button
+  
   if button ~= nil then
     if self.song.transport.playing then
-      button.text = "Stop"
+      vbp.views.transport_button.text = "Stop"
       button.color = {128, 0, 0}
     else
-      button.text = "Play"
+      vbp.views.transport_button.text = "Play"
       button.color = {0, 128, 0}
     end
   end
@@ -249,8 +254,8 @@ function Dialog:createDialog()
           margin = 0,
           mode = "justify",
           self:createTrackButton(1),
-          self:createTrackButton(3),
           self:createTrackButton(2),
+          self:createTrackButton(3),
           self:createTrackButton(4)
         },
         vbp:horizontal_aligner {
@@ -353,6 +358,15 @@ function Dialog:createDialog()
   return dialog
 end
 
+-- Set the proper muted status for the UI
+function Dialog:setMutedStatus(trackIndex, status)
+  trackState[trackIndex].muted.value = status
+  if status == false then
+    trackState[trackIndex].unmuteCounter.value = 0
+    trackState[trackIndex].mutedColumnCount.value = 0
+  end
+end
+
 -- Set proper fill button color
 function Dialog:setFillButtonState(active)
   local button = vbp.views.fill_button
@@ -377,7 +391,7 @@ function Dialog:reset(song)
 end
 
 -- Handler for key presses on the dialog
-function Dialog:keyHandler(dialog, key)
+function Dialog:keyHandler(key)
   if key.name == "left" then
     self:onPrevButtonPressed()
   elseif key.name == "right" then
@@ -451,7 +465,9 @@ function Dialog:show()
     self:updatePlayButton()
     self:setFillButtonState(false)
 
-    dialog = app:show_custom_dialog("Live", dialogContent, self.keyHandler)
+    dialog = app:show_custom_dialog("Live", dialogContent, function(d, key)
+      self:keyHandler(key)
+    end)
   else
     -- bring existing/visible dialog to front
     dialog:show()
