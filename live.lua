@@ -19,7 +19,6 @@ local stepCount = 0
 local masterTrackLength = 0
 local srcPattern
 local trackData = {}
-local _self
 
 -- Initialize
 function Live:new(song)
@@ -29,18 +28,16 @@ function Live:new(song)
   -- Prepare dialog:
   instance.dialog = Dialog:new(
     song,
-    instance.onTrackButtonPressed,
-    instance.onFillButtonPressed,
-    instance.onStartStopButtonPressed,
-    instance.onPrevButtonPressed,
-    instance.onNextButtonPressed
+    function(_, trackIndex) instance:onTrackButtonPressed(trackIndex) end,
+    function() instance:onFillButtonPressed() end,
+    function() instance:onStartStopButtonPressed() end,
+    function() instance:onPrevButtonPressed() end,
+    function() instance:onNextButtonPressed() end
   )
   
   -- Set observers:
   renoise.tool().app_idle_observable:add_notifier(instance.idleObserver)
   nextPattern:add_notifier(instance.updatePatternIndicator)
-
-  _self = instance
 
   return instance
 end
@@ -254,7 +251,7 @@ end
 -- Called when a track button is pressed
 function Live:onTrackButtonPressed(trackIndex)
   -- Mute track:
-  _self:toggleMute(trackIndex)
+  self:toggleMute(trackIndex)
 end
 
 -- Called when the fill button is pressed
@@ -271,12 +268,12 @@ end
 
 -- Called when the prev-button is pressed
 function Live:onPrevButtonPressed()
-
+  self:queuePrevPattern()
 end
 
 -- Called when the next-button is pressed
 function Live:onNextButtonPressed()
-
+  self:queueNextPattern()
 end
 
 return Live

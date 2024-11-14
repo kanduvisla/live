@@ -89,7 +89,7 @@ function Dialog:createTrackButton(trackIndex)
     
   -- Observer for the blinking Indicator
   self.trackState[trackIndex].trigged:add_notifier(function()
-    self:setTrackButtonColor(trackIndex)  
+    self:setTrackButtonColor(trackIndex)
   end)
   
   return button
