@@ -49,6 +49,8 @@ This tool adds the following effects to the pattern editor:
         - `ZC00` : Cut off (and repeat) the pattern from this point. This is up to but not included, so a cut on line 4 would repeat lines 1,2 and 3; effectively creating a [polyrhythm](https://en.wikipedia.org/wiki/Polyrhythm). 
             - Triggs (`ZR`) and inverted triggs (`ZI`) are supported when a track uses `ZC`
             - Fills (`ZF`) and muting (`ZM`) are not supported when a track uses `ZC`
+    - Di**v**ide the pattern speed by `x`:
+        - `ZVxx` : Instead of playing every step, wait `xx` steps for each next note. For example: `ZV04` would play one note every 4 steps, `ZN16` every 16 steps, etc.
 - The following effects are applicable only to **the master track**:
     - Automatically set **n**ext pattern (`ZN`)
         - `ZNxx` : Set pattern `xx` (in dec) to be the next one in the queue.
@@ -82,11 +84,9 @@ This is a rough lists of ideas that I want to add to this plugin in the future:
     - Stutter = hold down button on UI
     - Randomize = button on UI
 - Muting Groups - where you can mute/unmute multiple tracks at once
-- Track playback speed (1/2, 1/3, 1/4, 1/8, 1/16, 1/32, 1/64)
-    - Also stretch delay column
-    - suggestion: `ZSxx`
 - UI Button to nudge sequence forward or backward
 - UI Button to raise or lower scale
+- Different source pattern for individual tracks (UI only)
 - One tap on stop should not reset pattern, stop while stop should
 - External midi syncing / queueing
 - More optimizations (any help is welcome)

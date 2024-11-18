@@ -77,6 +77,13 @@ function LineProcessor:processTrackLine(track, trackIndex, dstLineNumber, isFill
   local trackLength = self.trackData[trackIndex].trackLength
   local src = self.trackData[trackIndex].srcPattern
   local srcLineNumber = self.trackData[trackIndex]:getSrcLineNumber(stepCount)
+  
+  -- if srcLineNumber is nil, then it means we're dealing with a time-divided track and no action is required for this step. However, it needs to be cleared:
+  if srcLineNumber == nil then
+    dst:track(trackIndex):line(dstLineNumber):clear()
+    return
+  end
+  
   local line = src:track(trackIndex):line(srcLineNumber)
   local effect = line:effect_column(1)
 
@@ -105,6 +112,14 @@ function LineProcessor:processTrackLine(track, trackIndex, dstLineNumber, isFill
     elseif effect.number_string == "ZF" then
       -- Fill:
       processColumns = isFillActive(isFillApplicable, effect.amount_string)
+    elseif effect.number_string == "ZV" then
+      local amount = tonumber(effect.amount_string)
+      if self.trackData[trackIndex].trackSpeedDivider ~= amount then
+        self.trackData[trackIndex].trackSpeedDivider = amount
+        -- Re-load the line:
+        srcLineNumber = self.trackData[trackIndex]:getSrcLineNumber(stepCount)
+        line = src:track(trackIndex):line(srcLineNumber)
+      end
     end
 
     -- Don't do an "else" here, because the previous step might have flipped this flag:
@@ -132,14 +147,6 @@ function LineProcessor:processTrackLine(track, trackIndex, dstLineNumber, isFill
           processNote = isFillActive(isFillApplicable, effect_amount)
         end
       end
-      
-      --[[
-      if trackIndex == 1 then
-        print(stepCount)
-        print(srcLineNumber)
-        rprint(src:track(trackIndex):line(1))
-      end
-      ]]--
       
       if processNote then
         -- If no Live effect is processed, simply copy as-is:

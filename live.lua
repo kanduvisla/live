@@ -16,9 +16,7 @@ local currPattern = doc.ObservableNumber(0)
 local nextPattern = doc.ObservableNumber(1)
 local userInitiatedFill = false
 local resetTriggerLights = false
--- local stepCount = 0
 local masterTrackLength = 0
-local srcPattern
 local trackData = {}
 
 -- Initialize
@@ -62,13 +60,10 @@ function Live:reset(song)
   nextPattern.value = 1
   patternPlayCount = 0
   patternSetCount = 1
-  -- trackLengths = {}
   userInitiatedFill = false
   resetTriggerLights = false
-  -- stepCount = 0
   masterTrackLength = 0
   trackData = {}
-  -- stepCount = 0
 
   self.song = song
   self.dialog:reset(song)
@@ -80,7 +75,7 @@ function Live:setupPattern()
   local dst = self.song:pattern(1)
   if nextPattern.value ~= currPattern.value and (patternPlayCount + 1) % patternSetCount == 0 then
     -- Prepare a new pattern
-    srcPattern = self.song:pattern(nextPattern.value + 1)
+    local srcPattern = self.song:pattern(nextPattern.value + 1)
     masterTrackLength = srcPattern.number_of_lines
     
     -- Pattern 0 is always 16 steps. The script always pastes new data to the next line
@@ -297,31 +292,6 @@ function Live:onStartStopButtonPressed()
     self:updatePatternIndicator()      
     self.dialog:updatePlayButton(true)
   end
-
-
-  --[[
-  if isStart == true then
-    -- Song started
-    self.lineProcessor:resetStepCounter()
-    patternPlayCount = 0
-    patternSetCount = 1
-    currLine = masterTrackLength
-    self:stepNotifier()
-    patternPlayCount = 0
-    self:updatePatternIndicator()      
-    
-  else
-    -- Song stopped, do soft reset    
-    -- Back to first step:
-    self.lineProcessor:resetStepCounter()
-    patternPlayCount = 0
-    patternSetCount = 1
-    currLine = masterTrackLength
-    self:stepNotifier()
-    patternPlayCount = 0
-    self:updatePatternIndicator()      
-  end
-  ]]--
 end
 
 -- Called when the prev-button is pressed
