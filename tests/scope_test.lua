@@ -46,6 +46,24 @@ function B:callGreet(name)
     self:greetFn(name)
 end
 
+function B.changeName()
+    self.name = "Mr. C"
+end
+
+-- Object C
+C = {}
+C.__index = C
+
+function C:new()
+    local instance = setmetatable({}, C)
+    instance.b = B:new()
+    return instance
+end
+
+function C:callChangeName()
+    self.b:changeName()
+end
+
 -- Helper function to bind self
 function bind(fn, obj)
     return function(...)

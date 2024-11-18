@@ -1,5 +1,6 @@
 local Dialog = require("ui/dialog")
 local TrackData = require("includes/track_data")
+local LineProcessor = require("lineProcessor")
 
 local Live = {}
 Live.__index = Live
@@ -7,15 +8,15 @@ Live.__index = Live
 -- Private properties
 local benchmark = false
 local doc = renoise.Document
-local currLine = 0
-local prevLine = -1
+local currLine = 1
+local prevLine = 1
 local patternPlayCount = 0
 local patternSetCount = 1
-local currPattern = doc.ObservableNumber(1)
+local currPattern = doc.ObservableNumber(0)
 local nextPattern = doc.ObservableNumber(1)
 local userInitiatedFill = false
 local resetTriggerLights = false
-local stepCount = 0
+-- local stepCount = 0
 local masterTrackLength = 0
 local srcPattern
 local trackData = {}
@@ -30,14 +31,25 @@ function Live:new(song)
     song,
     function(_, trackIndex) instance:onTrackButtonPressed(trackIndex) end,
     function() instance:onFillButtonPressed() end,
-    function() instance:onStartStopButtonPressed() end,
+    function(_, isStart) instance:onStartStopButtonPressed(isStart) end,
     function() instance:onPrevButtonPressed() end,
     function() instance:onNextButtonPressed() end
   )
   
+  -- Create line processor
+  instance.lineProcessor = LineProcessor:new(
+    song,
+    {},
+    function(_, trackIndex, muted) instance:onSetTrackMuted(trackIndex, muted) end,
+    function(_, trackIndex, trackColumnIndex, muted) instance:onSetTrackColumnMuted(trackIndex, trackColumnIndex, muted) end,
+    function(_, trackIndex, unmuteCounter) instance:onUpdateUnmuteCounter(trackIndex, unmuteCounter) end,
+    function(_, newPatternPlayCount) patternPlayCount = newPatternPlayCount end,
+    function(_, nextPatternValue) nextPattern.value = nextPatternValue end
+  )
+
   -- Set observers:
-  renoise.tool().app_idle_observable:add_notifier(instance.idleObserver)
-  nextPattern:add_notifier(instance.updatePatternIndicator)
+  renoise.tool().app_idle_observable:add_notifier(function() instance:idleObserver() end)
+  nextPattern:add_notifier(function() instance:updatePatternIndicator() end)
 
   return instance
 end
@@ -53,13 +65,14 @@ function Live:reset(song)
   -- trackLengths = {}
   userInitiatedFill = false
   resetTriggerLights = false
-  stepCount = 0
+  -- stepCount = 0
   masterTrackLength = 0
   trackData = {}
   -- stepCount = 0
 
   self.song = song
   self.dialog:reset(song)
+  self.lineProcessor:reset(song)
 end
 
 -- Setup pattern, this is called when the dialog opens, and every time a new pattern begins.
@@ -90,9 +103,10 @@ function Live:setupPattern()
         )
       end
     end
-    
-    currPattern.value = nextPattern.value
+    self.lineProcessor:setTrackData(trackData)
 
+    currPattern.value = nextPattern.value
+    
     self:updatePatternIndicator()
   else
     -- Update play count
@@ -112,7 +126,7 @@ end
 
 -- Get the length of an individual track (based on it's cutoff point)
 function Live:getPatternTrackLength(srcPattern, trackIndex)
-  patternTrack = srcPattern:track(trackIndex)
+  local patternTrack = srcPattern:track(trackIndex)
   local number_of_lines = srcPattern.number_of_lines
   for l=1, number_of_lines do
     local line = patternTrack:line(l)
@@ -129,8 +143,8 @@ end
 -- Idle observer
 function Live:idleObserver()
   if self ~= nil and self.song ~= nil then
-    currLine = song.transport.playback_pos.line
-    if song.transport.playing and currLine ~= prevLine then
+    currLine = self.song.transport.playback_pos.line
+    if self.song.transport.playing and currLine ~= prevLine then
       -- currLine has just played, prepare the following line
       self:stepNotifier()
       prevLine = currLine
@@ -150,23 +164,13 @@ function Live:stepNotifier()
   end
 
   -- Process the next line:
-  --[[
-  if src ~= nil then
-    -- TODO: Move to separate object    
-    processLine(
-      song,
-      (currLine % masterTrackLength) + 1, -- dst line
-      src,                                 
-      trackState, 
-      trackLengths,
-      stepCount, 
-      currPattern.value ~= nextPattern.value
-    )
-  end
-  ]]--
+  self.lineProcessor:process(
+    (currLine % masterTrackLength) + 1,
+    currPattern.value ~= nextPattern.value or userInitiatedFill
+  )
 
   -- Increase step
-  stepCount = stepCount + 1
+  self.lineProcessor:step()
 
   -- Check for pattern change:
   if currLine == masterTrackLength then
@@ -207,16 +211,20 @@ function Live:updatePatternIndicator()
 end
 
 -- Show the dialog
-function Live:showDialog()
+function Live:showDialog(song)
+  self:reset(song)
   self:setupPattern()
   self.dialog:show()
-  self:reset(self.song)
+  
+  -- Process first step:
+  currLine = masterTrackLength
+  self:stepNotifier()
   self:updatePatternIndicator()
 end
 
 -- Queue the next pattern
 function Live:queueNextPattern()
-  if nextPattern.value < song.transport.song_length.sequence - 1 then
+  if nextPattern.value < self.song.transport.song_length.sequence - 1 then
     nextPattern.value = nextPattern.value + 1
   end
 end
@@ -262,8 +270,26 @@ function Live:onFillButtonPressed()
 end
 
 -- Called when the start/stop button is pressed
-function Live:onStartStopButtonPressed()
-
+function Live:onStartStopButtonPressed(isStart)
+  if isStart == true then
+    -- Song started
+    
+  else
+    -- Song stopped, do soft reset    
+    -- Back to first step:
+    self.lineProcessor:resetStepCounter()
+    currLine = masterTrackLength
+    self:stepNotifier()
+    self:updatePatternIndicator()      
+  end
+  
+  --[[
+  currLine = 1
+  prevLine = 1
+  self.lineProcessor:resetStepCounter()
+  self.lineProcessor:process(1, false)
+  self:updatePatternIndicator()
+  ]]--
 end
 
 -- Called when the prev-button is pressed
@@ -274,6 +300,25 @@ end
 -- Called when the next-button is pressed
 function Live:onNextButtonPressed()
   self:queueNextPattern()
+end
+
+-- Called when a track is muted from the lineProcessor
+function Live:onSetTrackMuted(trackIndex, muted)
+  self.dialog:setMutedStatus(trackIndex, muted)
+end
+
+-- Called when a muted column has played a loop again
+function Live:onUpdateUnmuteCounter(trackIndex, value)
+  self.dialog:setUnmuteCounter(trackIndex, value)  
+end
+
+-- Called when a track column is muted from the lineProcessor
+function Live:onSetTrackColumnMuted(trackIndex, columnIndex, muted)
+  if muted == true then
+    self.dialog:updateMutedColumnCount(trackIndex, 1)
+  else
+    self.dialog:updateMutedColumnCount(trackIndex, -1)
+  end
 end
 
 return Live

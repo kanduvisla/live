@@ -8,7 +8,7 @@ isMuted = function(effectAmount, trackPlayCount)
     return nil
   end
 
-  if trackPlayCount == effectAmount - 1 then
+  if trackPlayCount == effectAmount then
     return false
   end
 

@@ -89,7 +89,7 @@ function Dialog:createTrackButton(trackIndex)
     
   -- Observer for the blinking Indicator
   self.trackState[trackIndex].trigged:add_notifier(function()
-    self:setTrackButtonColor(trackIndex)
+    self:updateTrackButtonColor(trackIndex)
   end)
   
   return button
@@ -114,9 +114,13 @@ end
 
 -- Update Track Button
 function Dialog:updateTrackButton(trackIndex)
+  if self.trackState[trackIndex] == nil then
+    return
+  end
+
   local track = self.song.tracks[trackIndex]
   local button = vbp.views["track_button_" .. trackIndex]
-  
+
   if track == nil or track.type ~= renoise.Track.TRACK_TYPE_SEQUENCER then
     self.trackState[trackIndex].track = nil
     
@@ -153,18 +157,13 @@ function Dialog:createPlayButton()
     color = {0, 128, 0},
     pressed = function()
       if self.song.transport.playing then
+        self:onStartStopButtonPressed(false)
         self.song.transport:stop()
-        self:onStartStopButtonPressed()
---        reset()
---        setupPattern()
       else
-        -- Play pattern 0 in loop
---        currPattern.value = 1
---        nextPattern.value = 1
+        self:onStartStopButtonPressed(true)
         self.song.transport.loop_pattern = true
         local song_pos = renoise.SongPos(1, 1)
         self.song.transport:start_at(song_pos)
-        self:onStartStopButtonPressed()
       end
 
       self:updatePlayButton()
@@ -205,6 +204,9 @@ end
 -- Update Pattern Indicator
 function Dialog:updatePatternIndicator(currPattern, nextPattern, patternPlayCount, patternSetCount, userInitiatedFill)
   local patternIndicatorView = vbp.views.pattern_indicator
+  if patternIndicatorView == nil then
+    return
+  end
 
   if currPattern.value ~= nextPattern.value then
     patternIndicatorView.text = string.format(
@@ -378,6 +380,17 @@ function Dialog:setFillButtonState(active)
       button.color = {1, 1, 1}
     end  
   end
+end
+
+-- Update unmute counter
+function Dialog:setUnmuteCounter(trackIndex, value)
+  trackState[trackIndex].unmuteCounter.value = value
+  -- self:updateTrackButton(trackIndex)
+end
+
+-- Update the muted column count
+function Dialog:updateMutedColumnCount(trackIndex, delta)
+  trackState[trackIndex].mutedColumnCount.value = trackState[trackIndex].mutedColumnCount.value + 1
 end
 
 -- Reset the dialog
