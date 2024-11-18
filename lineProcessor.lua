@@ -15,7 +15,7 @@ function LineProcessor:new(
   onSetTrackMuted,
   onSetTrackColumnMuted,
   onUpdateUnmuteCounter,
-  onChangePatternPlayCount,
+  onChangePatternSetCount,
   onSetNextPattern
 )
   local instance = setmetatable({}, LineProcessor)
@@ -27,7 +27,7 @@ function LineProcessor:new(
   instance.onSetTrackMuted = onSetTrackMuted
   instance.onSetTrackColumnMuted = onSetTrackColumnMuted
   instance.onUpdateUnmuteCounter = onUpdateUnmuteCounter
-  instance.onChangePatternPlayCount = onChangePatternPlayCount
+  instance.onChangePatternSetCount = onChangePatternSetCount
   instance.onSetNextPattern = onSetNextPattern
 
   return instance
@@ -57,18 +57,18 @@ function LineProcessor:step()
 end
 
 -- Process a single line
-function LineProcessor:process(dstLineNumber, isTransitioning)
+function LineProcessor:process(dstLineNumber, isFillApplicable)
   -- Iterate over every sequencer track:
   for trackIndex=1, #dst.tracks do
     local track = self.song:track(trackIndex)
     if track.type == renoise.Track.TRACK_TYPE_SEQUENCER or track.type == renoise.Track.TRACK_TYPE_MASTER then
-      self:processTrackLine(track, trackIndex, dstLineNumber, isTransitioning)
+      self:processTrackLine(track, trackIndex, dstLineNumber, isFillApplicable)
     end
   end
 end
 
 -- Process a single track line
-function LineProcessor:processTrackLine(track, trackIndex, dstLineNumber, isTransitioning)
+function LineProcessor:processTrackLine(track, trackIndex, dstLineNumber, isFillApplicable)
   -- Track data can be nil due to the idle processor:
   if self.trackData[trackIndex] == nil then
     return
@@ -81,10 +81,9 @@ function LineProcessor:processTrackLine(track, trackIndex, dstLineNumber, isTran
   local effect = line:effect_column(1)
 
   if track.type == renoise.Track.TRACK_TYPE_MASTER then
-    -- TODO: Master track only accepts `ZN` and `ZP`
     if effect.number_string == "ZP" then
-      -- Set pattern play count
-      self:onChangePatternPlayCount(tonumber(effect.amount_string))
+      -- Set pattern set count
+      self:onChangePatternSetCount(tonumber(effect.amount_string))
     elseif effect.number_string == "ZN" then
       -- Set next track
       self:onSetNextPattern(tonumber(effect.amount_string))
@@ -105,10 +104,7 @@ function LineProcessor:processTrackLine(track, trackIndex, dstLineNumber, isTran
       processColumns = is_trig_active(effect.amount_string, trackPlayCount) == false
     elseif effect.number_string == "ZF" then
       -- Fill:
-      -- TODO: Add user initiated fills
-      -- TODO: Track Set Count (how many times does a pattern "loop" inside a set) (now it's limited to the entire pattern length)
-      -- processColumns = isFillActive(isTransitioning, trackPlayCount, patternPlayCount, effect.amount_string, false)
-      -- TODO
+      processColumns = isFillActive(isFillApplicable, effect.amount_string)
     end
 
     -- Don't do an "else" here, because the previous step might have flipped this flag:
@@ -132,8 +128,8 @@ function LineProcessor:processTrackLine(track, trackIndex, dstLineNumber, isTran
           -- Mute
           processNote = processMutedColumn(tonumber(effect_amount), trackPlayCount, c, track, trackState, trackIndex) == false
         elseif effect_number == "ZF" then
-          -- Fill (TODO)
-          -- processNote = isFillActive(isTransitioning, trackPlayCount, patternPlayCount, effect_amount, false)
+          -- Fill:
+          processNote = isFillActive(isFillApplicable, effect_amount)
         end
       end
       
@@ -161,7 +157,7 @@ end
 
 -- Process muted state for the track
 function LineProcessor:processMutedTrack(effectAmount, trackPlayCount, track, trackIndex)
-  print(trackPlayCount)
+  -- print(trackPlayCount)
   local result = isMuted(tonumber(effectAmount), trackPlayCount)
   
   if result == true then

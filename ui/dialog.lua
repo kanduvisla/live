@@ -156,17 +156,7 @@ function Dialog:createPlayButton()
     height = buttonSize,
     color = {0, 128, 0},
     pressed = function()
-      if self.song.transport.playing then
-        self:onStartStopButtonPressed(false)
-        self.song.transport:stop()
-      else
-        self:onStartStopButtonPressed(true)
-        self.song.transport.loop_pattern = true
-        local song_pos = renoise.SongPos(1, 1)
-        self.song.transport:start_at(song_pos)
-      end
-
-      self:updatePlayButton()
+      self:onStartStopButtonPressed()
     end
   }
 
@@ -174,11 +164,11 @@ function Dialog:createPlayButton()
 end
 
 -- Update the playbutton
-function Dialog:updatePlayButton()
+function Dialog:updatePlayButton(playing)
   local button = vbp.views.transport_button
   
   if button ~= nil then
-    if self.song.transport.playing then
+    if playing == true then
       vbp.views.transport_button.text = "Stop"
       button.color = {128, 0, 0}
     else
@@ -396,7 +386,7 @@ end
 -- Reset the dialog
 function Dialog:reset(song)
   self.song = song
-  self:updatePlayButton()
+  self:updatePlayButton(false)
   for trackIndex = 1, 16 do
     self:updateTrackButton(trackIndex)
   end
@@ -475,7 +465,8 @@ function Dialog:show()
     for trackIndex = 1, 16 do
       self:updateTrackButton(trackIndex)
     end
-    self:updatePlayButton()
+    
+    self:updatePlayButton(false)
     self:setFillButtonState(false)
 
     dialog = app:show_custom_dialog("Live", dialogContent, function(d, key)

@@ -28,10 +28,16 @@ end
 
 -- Determine if there is a fill
 -- Returns true if the note is to be kept, false if the note is to be cleared
-isFillActive = function(isTransitioning, trackPlayCount, trackSetCount, amountString, userInitiatedFill)
-  -- Remove the not playing ones:
-  if isTransitioning or userInitiatedFill == true then
-    -- Transition to another pattern
+isFillActive = function(isFillApplicable, amountString)
+  -- Only "ZF01" is allowed to play ...
+  if isFillApplicable and amountString == "01" then
+    return true
+  end
+  
+  -- ... and nothing else: 
+  return false
+  --[[
+    -- Manual fill or transition to another pattern
     -- Check if we're in the last run of the set:
     if (trackPlayCount + 1) % trackSetCount == 0 then
       -- We're in a the last pattern play of the transition, filter out "00"
@@ -45,11 +51,12 @@ isFillActive = function(isTransitioning, trackPlayCount, trackSetCount, amountSt
       end
     end
   else
-    -- No transition to another pattern, filter out "01"
+    -- No manual fill or transition to another pattern, filter out "01"
     if amountString == "01" then
       return false
     end
   end
   
   return true
+  ]]--
 end

@@ -31,7 +31,7 @@ function Live:new(song)
     song,
     function(_, trackIndex) instance:onTrackButtonPressed(trackIndex) end,
     function() instance:onFillButtonPressed() end,
-    function(_, isStart) instance:onStartStopButtonPressed(isStart) end,
+    function() instance:onStartStopButtonPressed() end,
     function() instance:onPrevButtonPressed() end,
     function() instance:onNextButtonPressed() end
   )
@@ -43,7 +43,7 @@ function Live:new(song)
     function(_, trackIndex, muted) instance:onSetTrackMuted(trackIndex, muted) end,
     function(_, trackIndex, trackColumnIndex, muted) instance:onSetTrackColumnMuted(trackIndex, trackColumnIndex, muted) end,
     function(_, trackIndex, unmuteCounter) instance:onUpdateUnmuteCounter(trackIndex, unmuteCounter) end,
-    function(_, newPatternPlayCount) patternPlayCount = newPatternPlayCount end,
+    function(_, newPatternSetCount) instance:onUpdatePatternSetCount(newPatternSetCount) end,
     function(_, nextPatternValue) nextPattern.value = nextPatternValue end
   )
 
@@ -78,7 +78,6 @@ end
 -- Setup pattern, this is called when the dialog opens, and every time a new pattern begins.
 function Live:setupPattern()
   local dst = self.song:pattern(1)
-
   if nextPattern.value ~= currPattern.value and (patternPlayCount + 1) % patternSetCount == 0 then
     -- Prepare a new pattern
     srcPattern = self.song:pattern(nextPattern.value + 1)
@@ -163,19 +162,20 @@ function Live:stepNotifier()
     time = os.clock()
   end
 
-  -- Process the next line:
-  self.lineProcessor:process(
-    (currLine % masterTrackLength) + 1,
-    currPattern.value ~= nextPattern.value or userInitiatedFill
-  )
-
-  -- Increase step
-  self.lineProcessor:step()
-
   -- Check for pattern change:
   if currLine == masterTrackLength then
     self:setupPattern()
   end
+
+  -- Process the next line:
+  local isLastPattern = (patternPlayCount + 1) % patternSetCount == 0
+  self.lineProcessor:process(
+    (currLine % masterTrackLength) + 1,
+    isLastPattern and (currPattern.value ~= nextPattern.value or userInitiatedFill)
+  )
+
+  -- Increase step
+  self.lineProcessor:step()
 
   -- Show trig indicator:
   -- TODO: Performance check on RPI:
@@ -210,6 +210,12 @@ function Live:updatePatternIndicator()
   self.dialog:updatePatternIndicator(currPattern, nextPattern, patternPlayCount, patternSetCount, userInitiatedFill)
 end
 
+-- Update the pattern set count
+function Live:onUpdatePatternSetCount(newPatternSetCount)
+  patternSetCount = newPatternSetCount
+  self:updatePatternIndicator()
+end
+
 -- Show the dialog
 function Live:showDialog(song)
   self:reset(song)
@@ -219,6 +225,7 @@ function Live:showDialog(song)
   -- Process first step:
   currLine = masterTrackLength
   self:stepNotifier()
+  patternPlayCount = 0
   self:updatePatternIndicator()
 end
 
@@ -270,25 +277,50 @@ function Live:onFillButtonPressed()
 end
 
 -- Called when the start/stop button is pressed
-function Live:onStartStopButtonPressed(isStart)
+function Live:onStartStopButtonPressed()
+  if self.song.transport.playing then
+    self.song.transport:stop()
+    self.dialog:updatePlayButton(false)
+  else
+    self.lineProcessor:resetStepCounter()
+    patternPlayCount = 0
+    patternSetCount = 1
+    currLine = masterTrackLength
+    self:stepNotifier()
+    patternPlayCount = 0
+    
+    self.song.transport.loop_pattern = true
+    local song_pos = renoise.SongPos(1, 1)
+    self.song.transport:start_at(song_pos)
+
+    -- self:stepNotifier()
+    self:updatePatternIndicator()      
+    self.dialog:updatePlayButton(true)
+  end
+
+
+  --[[
   if isStart == true then
     -- Song started
+    self.lineProcessor:resetStepCounter()
+    patternPlayCount = 0
+    patternSetCount = 1
+    currLine = masterTrackLength
+    self:stepNotifier()
+    patternPlayCount = 0
+    self:updatePatternIndicator()      
     
   else
     -- Song stopped, do soft reset    
     -- Back to first step:
     self.lineProcessor:resetStepCounter()
+    patternPlayCount = 0
+    patternSetCount = 1
     currLine = masterTrackLength
     self:stepNotifier()
+    patternPlayCount = 0
     self:updatePatternIndicator()      
   end
-  
-  --[[
-  currLine = 1
-  prevLine = 1
-  self.lineProcessor:resetStepCounter()
-  self.lineProcessor:process(1, false)
-  self:updatePatternIndicator()
   ]]--
 end
 
