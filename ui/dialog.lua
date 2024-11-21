@@ -357,6 +357,7 @@ function Dialog:setMutedStatus(trackIndex, status)
     trackState[trackIndex].unmuteCounter.value = 0
     trackState[trackIndex].mutedColumnCount.value = 0
   end
+  self:updateTrackButtonColor(trackIndex)
 end
 
 -- Set proper fill button color
