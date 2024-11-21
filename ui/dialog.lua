@@ -17,7 +17,8 @@ function Dialog:new(
   onFillButtonPressed,
   onStartStopButtonPressed,
   onPrevButtonPressed,
-  onNextButtonPressed
+  onNextButtonPressed,
+  onMuteQueuePressed
 )
   local instance = setmetatable({}, Dialog)
 
@@ -28,6 +29,7 @@ function Dialog:new(
   instance.onStartStopButtonPressed = onStartStopButtonPressed
   instance.onPrevButtonPressed = onPrevButtonPressed
   instance.onNextButtonPressed = onNextButtonPressed
+  instance.onMuteQueuePressed = onMuteQueuePressed
 
   return instance
 end
@@ -105,6 +107,12 @@ function Dialog:updateTrackButtonColor(trackIndex)
     else 
       button.color = {128, 200, 0}
     end
+  elseif self.trackState[trackIndex].mutedQueue == true then
+    if self.trackState[trackIndex].muted.value == true then
+      button.color = {255, 120, 0}
+    else 
+      button.color = {200, 200, 0}
+    end
   elseif self.trackState[trackIndex].muted.value == true then
     button.color = {200, 0, 0}
   else 
@@ -138,6 +146,7 @@ function Dialog:updateTrackButton(trackIndex)
     self.trackState[trackIndex].unmuteCounter.value = 0
     self.trackState[trackIndex].trigged.value = false
     self.trackState[trackIndex].mutedColumnCount.value = 0
+    self.trackState[trackIndex].mutedQueue = false
   
     button.color = trackColor
     button.active = true
@@ -192,7 +201,15 @@ function Dialog:createPatternIndicator()
 end
 
 -- Update Pattern Indicator
-function Dialog:updatePatternIndicator(currPattern, nextPattern, patternPlayCount, patternSetCount, userInitiatedFill)
+function Dialog:updatePatternIndicator(
+  currPattern, 
+  nextPattern, 
+  patternPlayCount, 
+  patternSetCount, 
+  userInitiatedFill,
+  currentStep,
+  totalSteps
+)
   local patternIndicatorView = vbp.views.pattern_indicator
   if patternIndicatorView == nil then
     return
@@ -200,19 +217,23 @@ function Dialog:updatePatternIndicator(currPattern, nextPattern, patternPlayCoun
 
   if currPattern.value ~= nextPattern.value then
     patternIndicatorView.text = string.format(
-      "%s → %s (%s/%s)", 
+      "%s → %s (%s/%s)\n\n%s/%s", 
       currPattern.value,
       nextPattern.value,
       (patternPlayCount % patternSetCount) + 1,
-      patternSetCount
+      patternSetCount,
+      currentStep,
+      totalSteps
     )
   else 
     patternIndicatorView.text = string.format(
-      "%s (%s/%s)%s", 
+      "%s (%s/%s)%s\n\n%s/%s", 
       currPattern.value,
       (patternPlayCount % patternSetCount) + 1,
       patternSetCount,
-      userInitiatedFill and " (F)" or ""
+      userInitiatedFill and " (F)" or "",
+      currentStep,
+      totalSteps
     )
   end
 end
@@ -291,10 +312,11 @@ function Dialog:createDialog()
           color = {1, 1, 1}
         },
         vbp:button {
+          id = "mute_queue_button",
+          text = "Mute Queue",
           width = buttonSize,
           height = buttonSize,
-          text = "-",
-          active = false,
+          pressed = self.onMuteQueuePressed,
           color = {1, 1, 1}
         },
         vbp:button {
@@ -351,11 +373,17 @@ function Dialog:createDialog()
 end
 
 -- Set the proper muted status for the UI
-function Dialog:setMutedStatus(trackIndex, status)
-  trackState[trackIndex].muted.value = status
-  if status == false then
-    trackState[trackIndex].unmuteCounter.value = 0
-    trackState[trackIndex].mutedColumnCount.value = 0
+function Dialog:setMutedStatus(trackIndex, status, isQueued)
+  local isQueued = isQueued or false
+  if isQueued == false then
+    trackState[trackIndex].muted.value = status
+    if status == false then
+      trackState[trackIndex].unmuteCounter.value = 0
+      trackState[trackIndex].mutedColumnCount.value = 0
+    end
+    trackState[trackIndex].mutedQueue = false
+  else
+    trackState[trackIndex].mutedQueue = status
   end
   self:updateTrackButtonColor(trackIndex)
 end
@@ -363,6 +391,19 @@ end
 -- Set proper fill button color
 function Dialog:setFillButtonState(active)
   local button = vbp.views.fill_button
+
+  if button ~= nil then
+    if active == true then
+      button.color = {255, 255, 255}
+    else
+      button.color = {1, 1, 1}
+    end  
+  end
+end
+
+-- Set proper fill button color
+function Dialog:setMuteQueueButtonState(active)
+  local button = vbp.views.mute_queue_button
 
   if button ~= nil then
     if active == true then

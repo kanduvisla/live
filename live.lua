@@ -18,6 +18,8 @@ local userInitiatedFill = false
 local resetTriggerLights = false
 local masterTrackLength = 0
 local trackData = {}
+local isMuteQueueActive = false
+local muteQueue = {}
 
 -- Initialize
 function Live:new(song)
@@ -31,7 +33,8 @@ function Live:new(song)
     function() instance:onFillButtonPressed() end,
     function() instance:onStartStopButtonPressed() end,
     function() instance:onPrevButtonPressed() end,
-    function() instance:onNextButtonPressed() end
+    function() instance:onNextButtonPressed() end,
+    function() instance:onMuteQueuePressed() end
   )
   
   -- Create line processor
@@ -101,7 +104,7 @@ function Live:setupPattern()
 
     currPattern.value = nextPattern.value
     
-    self:updatePatternIndicator()
+    -- self:updatePatternIndicator()
   else
     -- Update play count
     patternPlayCount = patternPlayCount + 1
@@ -112,9 +115,9 @@ function Live:setupPattern()
       self.dialog:setFillButtonState(false)
     end
     
-    if patternSetCount > 1 then
-      self:updatePatternIndicator()
-    end
+    --if patternSetCount > 1 then
+    --  self:updatePatternIndicator()
+    --end
   end
 end
 
@@ -159,6 +162,14 @@ function Live:stepNotifier()
 
   -- Check for pattern change:
   if currLine == masterTrackLength then
+    -- Process mute queue
+    for trackIndex, process in pairs(muteQueue) do
+      if process then
+        self:toggleMute(trackIndex)
+      end
+      muteQueue = {}
+    end
+    -- Setup (potentialy) next pattern:
     self:setupPattern()
   end
 
@@ -169,6 +180,8 @@ function Live:stepNotifier()
     isLastPattern and (currPattern.value ~= nextPattern.value or userInitiatedFill)
   )
 
+  self:updatePatternIndicator()
+  
   -- Increase step
   self.lineProcessor:step()
 
@@ -202,13 +215,21 @@ end
 
 -- Shortcut to update the pattern indicator in the dialog
 function Live:updatePatternIndicator()
-  self.dialog:updatePatternIndicator(currPattern, nextPattern, patternPlayCount, patternSetCount, userInitiatedFill)
+  self.dialog:updatePatternIndicator(
+    currPattern, 
+    nextPattern, 
+    patternPlayCount, 
+    patternSetCount, 
+    userInitiatedFill,
+    currLine,
+    masterTrackLength
+  )
 end
 
 -- Update the pattern set count
 function Live:onUpdatePatternSetCount(newPatternSetCount)
   patternSetCount = newPatternSetCount
-  self:updatePatternIndicator()
+  -- self:updatePatternIndicator()
 end
 
 -- Show the dialog
@@ -261,14 +282,24 @@ end
 -- Called when a track button is pressed
 function Live:onTrackButtonPressed(trackIndex)
   -- Mute track:
-  self:toggleMute(trackIndex)
+  if isMuteQueueActive == false then
+    self:toggleMute(trackIndex)
+  else
+    if muteQueue[trackIndex] == nil then
+      muteQueue[trackIndex] = true      
+    else
+      muteQueue[trackIndex] = muteQueue[trackIndex] == false
+    end
+    print(muteQueue[trackIndex])
+    self.dialog:setMutedStatus(trackIndex, muteQueue[trackIndex], true)
+  end
 end
 
 -- Called when the fill button is pressed
 function Live:onFillButtonPressed()
   userInitiatedFill = true
   self.dialog:setFillButtonState(true)
-  self:updatePatternIndicator()
+  -- self:updatePatternIndicator()
 end
 
 -- Called when the start/stop button is pressed
@@ -302,6 +333,12 @@ end
 -- Called when the next-button is pressed
 function Live:onNextButtonPressed()
   self:queueNextPattern()
+end
+
+-- Called when the "Mute Queue" button is pressed
+function Live:onMuteQueuePressed()
+  isMuteQueueActive = isMuteQueueActive == false
+  self.dialog:setMuteQueueButtonState(isMuteQueueActive)
 end
 
 -- Called when a track is muted from the lineProcessor
