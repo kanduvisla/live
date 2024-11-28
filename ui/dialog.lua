@@ -5,10 +5,11 @@ Dialog.__index = Dialog
 local doc = renoise.Document
 local app = renoise.app()
 local vbp = renoise.ViewBuilder()
-local buttonSize = 96
+local buttonSize = 80
 local trackState = {}
 local dialog = nil
 local dialogContent = nil
+local isDebugEnabled = true
 
 -- New instance to create an operate the dialog
 function Dialog:new(
@@ -251,7 +252,7 @@ end
 -- .---------------.
 -- |       4       |
 -- `---------------`
---
+--     (debug)
 function Dialog:createDialog()
   local dialog = vbp:column {
     id = "container",
@@ -368,6 +369,15 @@ function Dialog:createDialog()
       }
     }
   }
+  
+  if isDebugEnabled then
+    dialog:add_child(
+      vbp:text {
+        id = "debug_info",
+        text = "(debug information)"
+      }
+    )
+  end
   
   return dialog
 end
@@ -517,6 +527,15 @@ function Dialog:show()
   else
     -- bring existing/visible dialog to front
     dialog:show()
+  end
+end
+
+-- Check if the dialog is visible
+function Dialog:isVisible()
+  if not dialog or not dialog.visible then
+    return false
+  else 
+    return dialog.visible
   end
 end
 

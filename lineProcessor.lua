@@ -114,7 +114,7 @@ function LineProcessor:processTrackLine(track, trackIndex, dstLineNumber, isFill
       processColumns = isFillActive(isFillApplicable, effect.amount_string)
     elseif effect.number_string == "ZV" then
       local amount = tonumber(effect.amount_string)
-      if self.trackData[trackIndex].trackSpeedDivider ~= amount then
+      if self.trackData[trackIndex].trackSpeedDivider ~= amount and amount > 0 then
         self.trackData[trackIndex].trackSpeedDivider = amount
         -- Re-load the line:
         srcLineNumber = self.trackData[trackIndex]:getSrcLineNumber(stepCount)
@@ -141,7 +141,7 @@ function LineProcessor:processTrackLine(track, trackIndex, dstLineNumber, isFill
           processNote = is_trig_active(effect_amount, trackPlayCount) == false
         elseif effect_number == "ZM" then
           -- Mute
-          processNote = processMutedColumn(tonumber(effect_amount), trackPlayCount, c, track, trackState, trackIndex) == false
+          processNote = self:processMutedColumn(tonumber(effect_amount), trackPlayCount, c, track, trackIndex) == false
         elseif effect_number == "ZF" then
           -- Fill:
           processNote = isFillActive(isFillApplicable, effect_amount)
@@ -166,7 +166,7 @@ end
 function LineProcessor:processMutedTrack(effectAmount, trackPlayCount, track, trackIndex)
   -- print(trackPlayCount)
   local result = isMuted(tonumber(effectAmount), trackPlayCount)
-  
+
   if result == true then
     track:mute()
     self:onSetTrackMuted(trackIndex, true)
@@ -176,10 +176,14 @@ function LineProcessor:processMutedTrack(effectAmount, trackPlayCount, track, tr
     self:onSetTrackMuted(trackIndex, false)
   elseif track.mute_state ~= renoise.Track.MUTE_STATE_ACTIVE then
     -- nil is returned, meaning: no change
-    self:onUpdateUnmuteCounter(trackIndex, effectAmount - (trackPlayCount % effectAmount))
+    if trackPlayCount < effectAmount then
+      self:onUpdateUnmuteCounter(trackIndex, effectAmount - (trackPlayCount % effectAmount))
+    end
+    return nil
   end
 
-  return result
+  -- return default state
+  return track.mute_state ~= renoise.Track.MUTE_STATE_ACTIVE
 end
 
 -- Process muted state for a column

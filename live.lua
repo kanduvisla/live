@@ -20,6 +20,7 @@ local masterTrackLength = 0
 local trackData = {}
 local isMuteQueueActive = false
 local muteQueue = {}
+local idleNotifier = nil
 
 -- Initialize
 function Live:new(song)
@@ -49,7 +50,7 @@ function Live:new(song)
   )
 
   -- Set observers:
-  renoise.tool().app_idle_observable:add_notifier(function() instance:idleObserver() end)
+  idleNotifier = function() instance:idleObserver() end
   nextPattern:add_notifier(function() instance:updatePatternIndicator() end)
 
   return instance
@@ -101,6 +102,7 @@ function Live:setupPattern()
       end
     end
     self.lineProcessor:setTrackData(trackData)
+    self.lineProcessor:resetStepCounter()
 
     currPattern.value = nextPattern.value
     
@@ -139,7 +141,7 @@ end
 
 -- Idle observer
 function Live:idleObserver()
-  if self ~= nil and self.song ~= nil then
+  if self ~= nil and self.song ~= nil and self.dialog:isVisible() then
     currLine = self.song.transport.playback_pos.line
     if self.song.transport.playing and currLine ~= prevLine then
       -- currLine has just played, prepare the following line
@@ -250,12 +252,20 @@ function Live:queueNextPattern()
   if nextPattern.value < self.song.transport.song_length.sequence - 1 then
     nextPattern.value = nextPattern.value + 1
   end
+  if self.song.transport.playing  == false then
+    currPattern.value = nextPattern.value
+    self:updatePatternIndicator()
+  end
 end
 
 -- Queue the previous pattern
 function Live:queuePrevPattern()
   if nextPattern.value > 1 then
     nextPattern.value = nextPattern.value - 1
+  end
+  if self.song.transport.playing  == false then
+    currPattern.value = nextPattern.value
+    self:updatePatternIndicator()
   end
 end
 
@@ -305,14 +315,24 @@ end
 -- Called when the start/stop button is pressed
 function Live:onStartStopButtonPressed()
   if self.song.transport.playing then
+    -- Somehow we need to hard reset this before we stop it, otherwise steps get missed and everything is a step off somehow...
+    local song_pos = renoise.SongPos(1, 1)
+    self.song.transport:start_at(song_pos)
     self.song.transport:stop()
     self.dialog:updatePlayButton(false)
+    if renoise.tool().app_idle_observable:has_notifier(idleNotifier) then
+      renoise.tool().app_idle_observable:remove_notifier(idleNotifier)
+    end
   else
     self.lineProcessor:resetStepCounter()
     patternPlayCount = 0
     patternSetCount = 1
     currLine = masterTrackLength
+    -- Do the first step so the first line gets populated
+    -- Make sure that the pattern gets initialized:
+    currPattern.value = -1
     self:stepNotifier()
+    -- Reset pattern play count, so it always starts at 0
     patternPlayCount = 0
     
     self.song.transport.loop_pattern = true
@@ -322,6 +342,10 @@ function Live:onStartStopButtonPressed()
     -- self:stepNotifier()
     self:updatePatternIndicator()      
     self.dialog:updatePlayButton(true)
+    
+    if renoise.tool().app_idle_observable:has_notifier(idleNotifier) == false then
+      renoise.tool().app_idle_observable:add_notifier(idleNotifier)
+    end
   end
 end
 
