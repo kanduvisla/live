@@ -86,6 +86,7 @@ This is a rough lists of ideas that I want to add to this plugin in the future:
 - Muting Groups - where you can mute/unmute multiple tracks at once
 - UI Button to nudge sequence forward or backward
 - UI Button to raise or lower scale
+- Also stretch delay time when dividing (`ZVxx`)
 - Different source pattern for individual tracks (UI only)
 - One tap on stop should not reset pattern, stop while stop should
 - External midi syncing / queueing
