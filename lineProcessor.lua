@@ -56,6 +56,11 @@ function LineProcessor:step()
   stepCount = stepCount + 1
 end
 
+-- Set step
+function LineProcessor:setStep(step)
+  stepCount = step
+end
+
 -- Process a single line
 function LineProcessor:process(dstLineNumber, isFillApplicable)
   -- Iterate over every sequencer track:

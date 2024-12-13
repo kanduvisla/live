@@ -83,6 +83,7 @@ function Live:setupPattern()
     masterTrackLength = srcPattern.number_of_lines
     
     -- Pattern 0 is always 16 steps. The script always pastes new data to the next line
+    -- TODO: Investigate if it makes more sense with a single pattern of 512 steps
     dst.number_of_lines = 16
 
     -- Reset some stuff:
@@ -177,7 +178,9 @@ function Live:stepNotifier()
 
   -- Process the next line:
   local isLastPattern = (patternPlayCount + 1) % patternSetCount == 0
+  -- self.lineProcessor:setStep(currLine)
   self.lineProcessor:process(
+    -- currLine + 1,
     (currLine % masterTrackLength) + 1,
     isLastPattern and (currPattern.value ~= nextPattern.value or userInitiatedFill)
   )
