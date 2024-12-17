@@ -202,7 +202,24 @@ function Live:stepNotifier()
   local patternPlayCount = self:getPatternPlayCount()
   local isLastPattern = (patternPlayCount + 1) % patternSetCount == 0
   local nextLine = currLine + 1
-  if nextLine > totalLength then
+
+  -- Detect frame drop:
+  if currLine ~= prevLine + 1 and (currLine + prevLine ~= 0) and (prevLine - currLine ~= totalLength - 1) then
+    -- We detected a frame drop.
+    -- This means that nextLine can be < totalLength, but we still need to increase an iteration
+    if nextLine > totalLength then
+      nextLine = nextLine - totalLength
+      -- Increase iteration:
+      totalIterations = totalIterations + 1
+    else
+      -- Check with prevLine if we need to increase the iteration:
+      -- If a frame has dropped, prevLine will still be in the old state (currLine + nextLine won't be)
+      if nextLine < prevLine then 
+        -- Increase iteration:
+        totalIterations = totalIterations + 1
+      end
+    end
+  elseif nextLine > totalLength then
     nextLine = nextLine - totalLength
     -- Increase iteration:
     totalIterations = totalIterations + 1

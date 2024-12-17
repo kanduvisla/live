@@ -60,7 +60,6 @@ end
 
 -- Set step
 function LineProcessor:setStep(step)
-  print("step: " .. step)
   stepCount = step
 end
 
