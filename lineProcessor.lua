@@ -52,12 +52,15 @@ function LineProcessor:setTrackData(trackData)
 end
 
 -- Take a single step
+--[[
 function LineProcessor:step()
   stepCount = stepCount + 1
 end
+]]--
 
 -- Set step
 function LineProcessor:setStep(step)
+  print("step: " .. step)
   stepCount = step
 end
 
@@ -123,7 +126,11 @@ function LineProcessor:processTrackLine(track, trackIndex, dstLineNumber, isFill
         self.trackData[trackIndex].trackSpeedDivider = amount
         -- Re-load the line:
         srcLineNumber = self.trackData[trackIndex]:getSrcLineNumber(stepCount)
-        line = src:track(trackIndex):line(srcLineNumber)
+        if srcLineNumber ~= nil then
+          line = src:track(trackIndex):line(srcLineNumber)
+        else
+          processColumns = false
+        end
       end
     end
 

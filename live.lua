@@ -10,17 +10,29 @@ local benchmark = false
 local doc = renoise.Document
 local currLine = 1
 local prevLine = 1
-local patternPlayCount = 0
+-- local patternPlayCount = 0
 local patternSetCount = 1
 local currPattern = doc.ObservableNumber(0)
 local nextPattern = doc.ObservableNumber(1)
 local userInitiatedFill = false
 local resetTriggerLights = false
-local masterTrackLength = 0
+-- local masterTrackLength = 0
 local trackData = {}
 local isMuteQueueActive = false
 local muteQueue = {}
 local idleNotifier = nil
+
+-- Total length, this is the number of lines of pattern 0. Min 2, otherwise you get wEiRdNeSs!
+local totalLength = 64
+
+-- This is a counter that counts how many times pattern 0 has looped.
+-- This number is used in conjunction with currLine and totalLength to determine the current step
+local totalIterations = 0
+
+-- This is the length per pattern. It's used to to determine how many times the pattern
+-- has already looped in the totalLength. The totalLength divided by the patternLength
+-- is the max of pattern loops that is possible before it resets (e.g. 512/16=32)
+local patternLength = 16
 
 -- Initialize
 function Live:new(song)
@@ -59,14 +71,14 @@ end
 -- Called when a new song is loaded, or when the dialog is re-opened
 function Live:reset(song)
   currLine = 0
-  prevLine = -1
-  currPattern.value = 0
+  prevLine = 0
+  currPattern.value = 1
   nextPattern.value = 1
-  patternPlayCount = 0
+  -- patternPlayCount = 0
   patternSetCount = 1
   userInitiatedFill = false
   resetTriggerLights = false
-  masterTrackLength = 0
+  -- masterTrackLength = 0
   trackData = {}
 
   self.song = song
@@ -74,21 +86,37 @@ function Live:reset(song)
   self.lineProcessor:reset(song)
 end
 
+function Live:getPatternPlayCount()
+  return (totalIterations * totalLength) + math.floor(currLine / patternLength)  
+end
+
 -- Setup pattern, this is called when the dialog opens, and every time a new pattern begins.
 function Live:setupPattern()
   local dst = self.song:pattern(1)
+  local patternPlayCount = self:getPatternPlayCount()
+  
   if nextPattern.value ~= currPattern.value and (patternPlayCount + 1) % patternSetCount == 0 then
     -- Prepare a new pattern
     local srcPattern = self.song:pattern(nextPattern.value + 1)
-    masterTrackLength = srcPattern.number_of_lines
+    
+    -- Process mute queue
+    for trackIndex, process in pairs(muteQueue) do
+      if process then
+        self:toggleMute(trackIndex)
+      end
+      muteQueue = {}
+    end
+
+    -- masterTrackLength = srcPattern.number_of_lines
     
     -- Pattern 0 is always 16 steps. The script always pastes new data to the next line
     -- TODO: Investigate if it makes more sense with a single pattern of 512 steps
-    dst.number_of_lines = 16
+    dst.number_of_lines = totalLength
 
     -- Reset some stuff:
-    patternPlayCount = 0
+    -- patternPlayCount = 0
     patternSetCount = 1
+    totalIterations = 0
     userInitiatedFill = false
     self.dialog:setFillButtonState(false)
 
@@ -102,15 +130,16 @@ function Live:setupPattern()
         )
       end
     end
+    
     self.lineProcessor:setTrackData(trackData)
-    self.lineProcessor:resetStepCounter()
+    -- self.lineProcessor:resetStepCounter()
 
     currPattern.value = nextPattern.value
     
     -- self:updatePatternIndicator()
   else
     -- Update play count
-    patternPlayCount = patternPlayCount + 1
+    -- patternPlayCount = patternPlayCount + 1
     
     -- If we're back at the start, the user initiated fill needs to be reset:
     if patternPlayCount % patternSetCount == 0 then
@@ -164,40 +193,43 @@ function Live:stepNotifier()
   end
 
   -- Check for pattern change:
-  if currLine == masterTrackLength then
-    -- Process mute queue
-    for trackIndex, process in pairs(muteQueue) do
-      if process then
-        self:toggleMute(trackIndex)
-      end
-      muteQueue = {}
-    end
+  if currLine % patternLength == 0 then
     -- Setup (potentialy) next pattern:
     self:setupPattern()
   end
 
   -- Process the next line:
+  local patternPlayCount = self:getPatternPlayCount()
   local isLastPattern = (patternPlayCount + 1) % patternSetCount == 0
-  -- self.lineProcessor:setStep(currLine)
+  local nextLine = currLine + 1
+  if nextLine > totalLength then
+    nextLine = nextLine - totalLength
+    -- Increase iteration:
+    totalIterations = totalIterations + 1
+  end
+  
+  self.lineProcessor:setStep((totalLength * totalIterations) + nextLine)
   self.lineProcessor:process(
-    -- currLine + 1,
-    (currLine % masterTrackLength) + 1,
+    nextLine,
+    -- (currLine % masterTrackLength) + 1,
     isLastPattern and (currPattern.value ~= nextPattern.value or userInitiatedFill)
   )
 
   self:updatePatternIndicator()
   
   -- Increase step
-  self.lineProcessor:step()
+  -- self.lineProcessor:step()
 
   -- Show trig indicator:
   -- TODO: Performance check on RPI:
-  for key in pairs(trackData) do
-    local trackIndex = trackData[key].trackIndex
-    local line = self.song:pattern(1):track(trackIndex):line(currLine)
-    self.dialog:setTriggerLight(trackIndex, self:hasNote(line))
+  if currLine > 0 then
+    for key in pairs(trackData) do
+      local trackIndex = trackData[key].trackIndex
+      local line = self.song:pattern(1):track(trackIndex):line(currLine)
+      self.dialog:setTriggerLight(trackIndex, self:hasNote(line))
+    end
+    resetTriggerLights = true
   end
-  resetTriggerLights = true
 
   if benchmark == true then
     -- For reference:
@@ -220,6 +252,7 @@ end
 
 -- Shortcut to update the pattern indicator in the dialog
 function Live:updatePatternIndicator()
+  local patternPlayCount = self:getPatternPlayCount()
   self.dialog:updatePatternIndicator(
     currPattern, 
     nextPattern, 
@@ -227,7 +260,7 @@ function Live:updatePatternIndicator()
     patternSetCount, 
     userInitiatedFill,
     currLine,
-    masterTrackLength
+    patternLength * patternSetCount
   )
 end
 
@@ -244,9 +277,9 @@ function Live:showDialog(song)
   self.dialog:show()
   
   -- Process first step:
-  currLine = masterTrackLength
-  self:stepNotifier()
-  patternPlayCount = 0
+  -- currLine = 1
+  -- self:stepNotifier()
+  -- patternPlayCount = 0
   self:updatePatternIndicator()
 end
 
@@ -328,15 +361,21 @@ function Live:onStartStopButtonPressed()
     end
   else
     self.lineProcessor:resetStepCounter()
-    patternPlayCount = 0
+    -- patternPlayCount = 0
     patternSetCount = 1
-    currLine = masterTrackLength
     -- Do the first step so the first line gets populated
     -- Make sure that the pattern gets initialized:
-    currPattern.value = -1
+    currLine = 0
+    totalIterations = 0
+    currPattern.value = 0
+    nextPattern.value = 1
     self:stepNotifier()
+    currLine = 1
+    totalIterations = 0
+    self:stepNotifier()
+
     -- Reset pattern play count, so it always starts at 0
-    patternPlayCount = 0
+    -- patternPlayCount = 0
     
     self.song.transport.loop_pattern = true
     local song_pos = renoise.SongPos(1, 1)

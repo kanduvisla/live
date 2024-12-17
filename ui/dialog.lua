@@ -9,7 +9,7 @@ local buttonSize = 80
 local trackState = {}
 local dialog = nil
 local dialogContent = nil
-local isDebugEnabled = true
+local isDebugEnabled = false
 
 -- New instance to create an operate the dialog
 function Dialog:new(
