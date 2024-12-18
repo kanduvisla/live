@@ -23,7 +23,7 @@ local muteQueue = {}
 local idleNotifier = nil
 
 -- Total length, this is the number of lines of pattern 0. Min 2, otherwise you get wEiRdNeSs!
-local totalLength = 64
+local totalLength = 16
 
 -- This is a counter that counts how many times pattern 0 has looped.
 -- This number is used in conjunction with currLine and totalLength to determine the current step
@@ -87,7 +87,7 @@ function Live:reset(song)
 end
 
 function Live:getPatternPlayCount()
-  return (totalIterations * totalLength) + math.floor(currLine / patternLength)  
+  return totalIterations + math.floor((currLine - 1) / patternLength)  
 end
 
 -- Setup pattern, this is called when the dialog opens, and every time a new pattern begins.
@@ -140,6 +140,8 @@ function Live:setupPattern()
   else
     -- Update play count
     -- patternPlayCount = patternPlayCount + 1
+    
+    totalIterations = totalIterations + 1
     
     -- If we're back at the start, the user initiated fill needs to be reset:
     if patternPlayCount % patternSetCount == 0 then
@@ -194,6 +196,7 @@ function Live:stepNotifier()
 
   -- Check for pattern change:
   if currLine % patternLength == 0 then
+    -- We have just played the last note in this pattern
     -- Setup (potentialy) next pattern:
     self:setupPattern()
   end
@@ -201,8 +204,14 @@ function Live:stepNotifier()
   -- Process the next line:
   local patternPlayCount = self:getPatternPlayCount()
   local isLastPattern = (patternPlayCount + 1) % patternSetCount == 0
+  
+  -- Prepare the next line:
   local nextLine = currLine + 1
+  if nextLine > totalLength then
+    nextLine = nextLine - totalLength
+  end
 
+  --[[
   -- Detect frame drop:
   if currLine ~= prevLine + 1 and (currLine + prevLine ~= 0) and (prevLine - currLine ~= totalLength - 1) then
     -- We detected a frame drop.
@@ -210,25 +219,28 @@ function Live:stepNotifier()
     if nextLine > totalLength then
       nextLine = nextLine - totalLength
       -- Increase iteration:
-      totalIterations = totalIterations + 1
+      -- print("increase iteration due to frame drop")
+      -- totalIterations = totalIterations + 1
     else
       -- Check with prevLine if we need to increase the iteration:
       -- If a frame has dropped, prevLine will still be in the old state (currLine + nextLine won't be)
       if nextLine < prevLine then 
         -- Increase iteration:
-        totalIterations = totalIterations + 1
+        -- print("increase iteration because nextline < prevLine #1")
+        -- totalIterations = totalIterations + 1
       end
     end
   elseif nextLine > totalLength then
     nextLine = nextLine - totalLength
     -- Increase iteration:
-    totalIterations = totalIterations + 1
+    -- print("increase iteration because nextline < prevLine #2")
+    -- totalIterations = totalIterations + 1
   end
+  ]]--
   
   self.lineProcessor:setStep((totalLength * totalIterations) + nextLine)
   self.lineProcessor:process(
     nextLine,
-    -- (currLine % masterTrackLength) + 1,
     isLastPattern and (currPattern.value ~= nextPattern.value or userInitiatedFill)
   )
 
@@ -277,7 +289,7 @@ function Live:updatePatternIndicator()
     patternSetCount, 
     userInitiatedFill,
     currLine,
-    patternLength * patternSetCount
+    patternLength
   )
 end
 

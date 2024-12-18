@@ -175,7 +175,6 @@ end
 
 -- Process muted state for the track
 function LineProcessor:processMutedTrack(effectAmount, trackPlayCount, track, trackIndex)
-  -- print(trackPlayCount)
   local result = isMuted(tonumber(effectAmount), trackPlayCount)
 
   if result == true then
