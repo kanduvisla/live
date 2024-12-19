@@ -10,13 +10,11 @@ local benchmark = false
 local doc = renoise.Document
 local currLine = 1
 local prevLine = 1
--- local patternPlayCount = 0
 local patternSetCount = 1
 local currPattern = doc.ObservableNumber(0)
 local nextPattern = doc.ObservableNumber(1)
 local userInitiatedFill = false
 local resetTriggerLights = false
--- local masterTrackLength = 0
 local trackData = {}
 local isMuteQueueActive = false
 local muteQueue = {}
@@ -74,11 +72,9 @@ function Live:reset(song)
   prevLine = 0
   currPattern.value = 1
   nextPattern.value = 1
-  -- patternPlayCount = 0
   patternSetCount = 1
   userInitiatedFill = false
   resetTriggerLights = false
-  -- masterTrackLength = 0
   trackData = {}
 
   self.song = song
@@ -107,14 +103,10 @@ function Live:setupPattern()
       muteQueue = {}
     end
 
-    -- masterTrackLength = srcPattern.number_of_lines
-    
     -- Pattern 0 is always 16 steps. The script always pastes new data to the next line
-    -- TODO: Investigate if it makes more sense with a single pattern of 512 steps
     dst.number_of_lines = totalLength
 
     -- Reset some stuff:
-    -- patternPlayCount = 0
     patternSetCount = 1
     totalIterations = 0
     userInitiatedFill = false
@@ -132,15 +124,8 @@ function Live:setupPattern()
     end
     
     self.lineProcessor:setTrackData(trackData)
-    -- self.lineProcessor:resetStepCounter()
-
     currPattern.value = nextPattern.value
-    
-    -- self:updatePatternIndicator()
   else
-    -- Update play count
-    -- patternPlayCount = patternPlayCount + 1
-    
     totalIterations = totalIterations + 1
     
     -- If we're back at the start, the user initiated fill needs to be reset:
@@ -148,10 +133,6 @@ function Live:setupPattern()
       userInitiatedFill = false
       self.dialog:setFillButtonState(false)
     end
-    
-    --if patternSetCount > 1 then
-    --  self:updatePatternIndicator()
-    --end
   end
 end
 
@@ -210,33 +191,6 @@ function Live:stepNotifier()
   if nextLine > totalLength then
     nextLine = nextLine - totalLength
   end
-
-  --[[
-  -- Detect frame drop:
-  if currLine ~= prevLine + 1 and (currLine + prevLine ~= 0) and (prevLine - currLine ~= totalLength - 1) then
-    -- We detected a frame drop.
-    -- This means that nextLine can be < totalLength, but we still need to increase an iteration
-    if nextLine > totalLength then
-      nextLine = nextLine - totalLength
-      -- Increase iteration:
-      -- print("increase iteration due to frame drop")
-      -- totalIterations = totalIterations + 1
-    else
-      -- Check with prevLine if we need to increase the iteration:
-      -- If a frame has dropped, prevLine will still be in the old state (currLine + nextLine won't be)
-      if nextLine < prevLine then 
-        -- Increase iteration:
-        -- print("increase iteration because nextline < prevLine #1")
-        -- totalIterations = totalIterations + 1
-      end
-    end
-  elseif nextLine > totalLength then
-    nextLine = nextLine - totalLength
-    -- Increase iteration:
-    -- print("increase iteration because nextline < prevLine #2")
-    -- totalIterations = totalIterations + 1
-  end
-  ]]--
   
   self.lineProcessor:setStep((totalLength * totalIterations) + nextLine)
   self.lineProcessor:process(
@@ -246,9 +200,6 @@ function Live:stepNotifier()
 
   self:updatePatternIndicator()
   
-  -- Increase step
-  -- self.lineProcessor:step()
-
   -- Show trig indicator:
   -- TODO: Performance check on RPI:
   if currLine > 0 then
@@ -296,7 +247,6 @@ end
 -- Update the pattern set count
 function Live:onUpdatePatternSetCount(newPatternSetCount)
   patternSetCount = newPatternSetCount
-  -- self:updatePatternIndicator()
 end
 
 -- Show the dialog
@@ -304,11 +254,6 @@ function Live:showDialog(song)
   self:reset(song)
   self:setupPattern()
   self.dialog:show()
-  
-  -- Process first step:
-  -- currLine = 1
-  -- self:stepNotifier()
-  -- patternPlayCount = 0
   self:updatePatternIndicator()
 end
 
@@ -374,7 +319,6 @@ end
 function Live:onFillButtonPressed()
   userInitiatedFill = true
   self.dialog:setFillButtonState(true)
-  -- self:updatePatternIndicator()
 end
 
 -- Called when the start/stop button is pressed
@@ -403,14 +347,10 @@ function Live:onStartStopButtonPressed()
     totalIterations = 0
     self:stepNotifier()
 
-    -- Reset pattern play count, so it always starts at 0
-    -- patternPlayCount = 0
-    
     self.song.transport.loop_pattern = true
     local song_pos = renoise.SongPos(1, 1)
     self.song.transport:start_at(song_pos)
 
-    -- self:stepNotifier()
     self:updatePatternIndicator()      
     self.dialog:updatePlayButton(true)
     
