@@ -21,7 +21,7 @@ local muteQueue = {}
 local idleNotifier = nil
 
 -- Total length, this is the number of lines of pattern 0. Min 2, otherwise you get wEiRdNeSs!
-local totalLength = 16
+local totalLength = 64
 
 -- This is a counter that counts how many times pattern 0 has looped.
 -- This number is used in conjunction with currLine and totalLength to determine the current step
@@ -30,7 +30,7 @@ local totalIterations = 0
 -- This is the length per pattern. It's used to to determine how many times the pattern
 -- has already looped in the totalLength. The totalLength divided by the patternLength
 -- is the max of pattern loops that is possible before it resets (e.g. 512/16=32)
-local patternLength = 16
+local patternLength = 64
 
 -- Initialize
 function Live:new(song)
