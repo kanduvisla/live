@@ -102,6 +102,9 @@ function Live:setupPattern()
       end
       muteQueue = {}
     end
+    
+    -- TODO: Iterate over all tracks and columns, if they don't have a "ZM", unmute them:
+    
 
     -- Pattern 0 is always 16 steps. The script always pastes new data to the next line
     dst.number_of_lines = totalLength

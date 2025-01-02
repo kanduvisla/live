@@ -136,10 +136,10 @@ function LineProcessor:processTrackLine(track, trackIndex, dstLineNumber, isFill
     -- Don't do an "else" here, because the previous step might have flipped this flag:
     if track.mute_state ~= renoise.Track.MUTE_STATE_MUTED and processColumns == true then
       -- Iterate over columns to process triggs & fills:
-      local processNote = true
       local columns = line.note_columns
 
       for c=1, #columns do
+        local processNote = true
         local column = line:note_column(c)
         local effect_number = column.effect_number_string
         local effect_amount = column.effect_amount_string
@@ -157,14 +157,15 @@ function LineProcessor:processTrackLine(track, trackIndex, dstLineNumber, isFill
           -- Fill:
           processNote = isFillActive(isFillApplicable, effect_amount)
         end
-      end
-      
-      if processNote then
-        -- If no Live effect is processed, simply copy as-is:
-        dst:track(trackIndex):line(dstLineNumber):copy_from(line)
-      else
-        -- Otherwise clear destination line:
-        dst:track(trackIndex):line(dstLineNumber):clear()
+        
+        -- Copy column line:
+        if processNote then
+          -- If no Live effect is processed, simply copy as-is:
+          dst:track(trackIndex):line(dstLineNumber):note_column(c):copy_from(column)
+        else
+          -- Otherwise clear destination line:
+          dst:track(trackIndex):line(dstLineNumber):note_column(c):clear()
+        end
       end
     else
       -- Otherwise clear destination line:
