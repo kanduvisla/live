@@ -5,7 +5,8 @@ Dialog.__index = Dialog
 local doc = renoise.Document
 local app = renoise.app()
 local vbp = renoise.ViewBuilder()
-local buttonSize = 80
+local buttonWidth = 80
+local buttonHeight = 40
 local trackState = {}
 local dialog = nil
 local dialogContent = nil
@@ -41,8 +42,8 @@ function Dialog:createTrackButton(trackIndex)
     id = "track_button_" .. trackIndex,
     text = "-",
     color = {0, 0, 0},
-    width = buttonSize,
-    height = buttonSize,
+    width = buttonWidth,
+    height = buttonHeight,
     active = false,
     pressed = function()
       -- rprint(self.onTrackButtonPressed)
@@ -162,8 +163,8 @@ function Dialog:createPlayButton()
   local button = vbp:button {
     id = "transport_button",
     text = "Play",
-    width = buttonSize,
-    height = buttonSize,
+    width = buttonWidth,
+    height = buttonHeight,
     color = {0, 128, 0},
     pressed = function()
       self:onStartStopButtonPressed()
@@ -196,8 +197,8 @@ function Dialog:createPatternIndicator()
     align = "center",
     font = "big",
     style = "strong",
-    width = buttonSize,
-    height = buttonSize
+    width = buttonWidth * 4,
+    height = buttonHeight
   }
 end
 
@@ -218,7 +219,7 @@ function Dialog:updatePatternIndicator(
 
   if currPattern.value ~= nextPattern.value then
     patternIndicatorView.text = string.format(
-      "%s → %s (%s/%s)\n\n%s/%s", 
+      "%s → %s (%s/%s) : %s/%s", 
       currPattern.value,
       nextPattern.value,
       (patternPlayCount % patternSetCount) + 1,
@@ -228,7 +229,7 @@ function Dialog:updatePatternIndicator(
     )
   else 
     patternIndicatorView.text = string.format(
-      "%s (%s/%s)%s\n\n%s/%s", 
+      "%s (%s/%s)%s : %s/%s", 
       currPattern.value,
       (patternPlayCount % patternSetCount) + 1,
       patternSetCount,
@@ -241,14 +242,17 @@ end
 
 -- Dialog structure:
 --
--- .---------. .---.
--- |    1    | | 2 | 
--- |         | |   | 
--- | .-----. | |   | 
--- | |  3  | | |   | 
--- | `-----` | |   | 
--- |   etc   | |   | 
--- `---------` `---`
+-- .---------.
+-- |    1    | 
+-- |         | 
+-- | .-----. |
+-- | |  2  | |
+-- | `-----` |
+-- |   etc   |
+-- `---------`
+-- .---------------.
+-- |       3       |
+-- `---------------`
 -- .---------------.
 -- |       4       |
 -- `---------------`
@@ -300,42 +304,52 @@ function Dialog:createDialog()
           self:createTrackButton(16)
         },
       },
-      vbp:column {
-        id = "fill_container",
-        margin = 0,
-        style = "plain",
-        vbp:button {
-          id = "fill_button",
-          text = "Fill",
-          width = buttonSize,
-          height = buttonSize,
-          pressed = self.onFillButtonPressed,
-          color = {1, 1, 1}
-        },
-        vbp:button {
-          id = "mute_queue_button",
-          text = "Mute Queue",
-          width = buttonSize,
-          height = buttonSize,
-          pressed = self.onMuteQueuePressed,
-          color = {1, 1, 1}
-        },
-        vbp:button {
-          width = buttonSize,
-          height = buttonSize,
-          text = "-",
-          active = false,
-          color = {1, 1, 1}
-        },
-        vbp:button {
-          width = buttonSize,
-          height = buttonSize,
-          text = "-",
-          active = false,
-          color = {1, 1, 1}
-        },
-      }
     },
+    vbp:row {
+      id = "fill_container",
+      margin = 0,
+      style = "plain",
+      --[[
+      vbp:button {
+        id = "mute_queue_button",
+        text = "Mute Queue",
+        width = buttonWidth,
+        height = buttonHeight,
+        pressed = self.onMuteQueuePressed,
+        color = {1, 1, 1}
+      },
+      ]]--
+      vbp:button {
+        width = buttonWidth,
+        height = buttonHeight,
+        text = "[shift]",
+        active = false,
+        color = {1, 1, 1}
+      },
+      vbp:button {
+        width = buttonWidth,
+        height = buttonHeight,
+        text = "-",
+        active = false,
+        color = {1, 1, 1}
+      },
+      vbp:button {
+        width = buttonWidth,
+        height = buttonHeight,
+        text = "-",
+        active = false,
+        color = {1, 1, 1}
+      },
+      vbp:button {
+        id = "fill_button",
+        text = "Fill",
+        width = buttonWidth,
+        height = buttonHeight,
+        pressed = self.onFillButtonPressed,
+        color = {1, 1, 1}
+      },
+    },
+    self:createPatternIndicator(),
     vbp:row {
       id = "transport_container",
       margin = 0,
@@ -345,24 +359,23 @@ function Dialog:createDialog()
         mode = "justify",
         self:createPlayButton(),
         vbp:button {
-          width = buttonSize,
-          height = buttonSize,
+          width = buttonWidth,
+          height = buttonHeight,
           text = "-",
           active = false,
           color = {1, 1, 1}
         },
         vbp:button {
           text = "Prev",
-          width = buttonSize,
-          height = buttonSize,
+          width = buttonWidth,
+          height = buttonHeight,
           color = {1, 1, 1},
           pressed = self.onPrevButtonPressed
         },
-        self:createPatternIndicator(),
         vbp:button {
           text = "Next",
-          width = buttonSize,
-          height = buttonSize,
+          width = buttonWidth,
+          height = buttonHeight,
           color = {1, 1, 1},
           pressed = self.onNextButtonPressed
         }
@@ -412,6 +425,7 @@ function Dialog:setFillButtonState(active)
 end
 
 -- Set proper fill button color
+--[[
 function Dialog:setMuteQueueButtonState(active)
   local button = vbp.views.mute_queue_button
 
@@ -423,6 +437,7 @@ function Dialog:setMuteQueueButtonState(active)
     end  
   end
 end
+]]--
 
 -- Update unmute counter
 function Dialog:setUnmuteCounter(trackIndex, value)
@@ -461,38 +476,70 @@ function Dialog:keyHandler(key)
     self:onNextButtonPressed()
   elseif key.name == "esc" then
     dialog:close()
-  elseif key.name == "1" then
+  elseif key.character == "1" then
     self:onTrackButtonPressed(1)
-  elseif key.name == "2" then
+  elseif key.character == "2" then
     self:onTrackButtonPressed(2)
-  elseif key.name == "3" then
+  elseif key.character == "3" then
     self:onTrackButtonPressed(3)
-  elseif key.name == "4" then
+  elseif key.character == "4" then
     self:onTrackButtonPressed(4)
-  elseif key.name == "5" then
+  elseif key.character == "5" then
     self:onTrackButtonPressed(5)
-  elseif key.name == "6" then
+  elseif key.character == "6" then
     self:onTrackButtonPressed(6)
-  elseif key.name == "7" then
+  elseif key.character == "7" then
     self:onTrackButtonPressed(7)
-  elseif key.name == "8" then
+  elseif key.character == "8" then
     self:onTrackButtonPressed(8)
-  elseif key.name == "q" then
+  elseif key.character == "q" then
     self:onTrackButtonPressed(9)
-  elseif key.name == "w" then
+  elseif key.character == "w" then
     self:onTrackButtonPressed(10)
-  elseif key.name == "e" then
+  elseif key.character == "e" then
     self:onTrackButtonPressed(11)
-  elseif key.name == "r" then
+  elseif key.character == "r" then
     self:onTrackButtonPressed(12)
-  elseif key.name == "t" then
+  elseif key.character == "t" then
     self:onTrackButtonPressed(13)
-  elseif key.name == "y" then
+  elseif key.character == "y" then
     self:onTrackButtonPressed(14)
-  elseif key.name == "u" then
+  elseif key.character == "u" then
     self:onTrackButtonPressed(15)
-  elseif key.name == "i" then
+  elseif key.character == "i" then
     self:onTrackButtonPressed(16)
+  elseif key.character == "!" then
+    self:onTrackButtonPressed(1, true)
+  elseif key.character == "@" then
+    self:onTrackButtonPressed(2, true)
+  elseif key.character == "#" then
+    self:onTrackButtonPressed(3, true)
+  elseif key.character == "$" then
+    self:onTrackButtonPressed(4, true)
+  elseif key.character == "%" then
+    self:onTrackButtonPressed(5, true)
+  elseif key.character == "^" then
+    self:onTrackButtonPressed(6, true)
+  elseif key.character == "&" then
+    self:onTrackButtonPressed(7, true)
+  elseif key.character == "*" then
+    self:onTrackButtonPressed(8, true)
+  elseif key.character == "Q" then
+    self:onTrackButtonPressed(9, true)
+  elseif key.character == "W" then
+    self:onTrackButtonPressed(10, true)
+  elseif key.character == "E" then
+    self:onTrackButtonPressed(11, true)
+  elseif key.character == "R" then
+    self:onTrackButtonPressed(12, true)
+  elseif key.character == "T" then
+    self:onTrackButtonPressed(13, true)
+  elseif key.character == "Y" then
+    self:onTrackButtonPressed(14, true)
+  elseif key.character == "U" then
+    self:onTrackButtonPressed(15, true)
+  elseif key.character == "I" then
+    self:onTrackButtonPressed(16, true)
   elseif key.name == "f" then
     self:onFillButtonPressed()
   end

@@ -16,7 +16,7 @@ local nextPattern = doc.ObservableNumber(1)
 local userInitiatedFill = false
 local resetTriggerLights = false
 local trackData = {}
-local isMuteQueueActive = false
+-- local isMuteQueueActive = false
 local muteQueue = {}
 local idleNotifier = nil
 
@@ -40,7 +40,7 @@ function Live:new(song)
   -- Prepare dialog:
   instance.dialog = Dialog:new(
     song,
-    function(_, trackIndex) instance:onTrackButtonPressed(trackIndex) end,
+    function(_, trackIndex, isShift) instance:onTrackButtonPressed(trackIndex, isShift) end,
     function() instance:onFillButtonPressed() end,
     function() instance:onStartStopButtonPressed() end,
     function() instance:onPrevButtonPressed() end,
@@ -327,9 +327,11 @@ function Live:toggleMute(trackIndex)
 end
 
 -- Called when a track button is pressed
-function Live:onTrackButtonPressed(trackIndex)
+function Live:onTrackButtonPressed(trackIndex, isShift)
+  isShift = isShift or false
+  print(isShift)
   -- Mute track:
-  if isMuteQueueActive == false then
+  if isShift == false then
     self:toggleMute(trackIndex)
   else
     if muteQueue[trackIndex] == nil then
@@ -337,7 +339,6 @@ function Live:onTrackButtonPressed(trackIndex)
     else
       muteQueue[trackIndex] = muteQueue[trackIndex] == false
     end
-    print(muteQueue[trackIndex])
     self.dialog:setMutedStatus(trackIndex, muteQueue[trackIndex], true)
   end
 end
@@ -360,15 +361,15 @@ function Live:onStartStopButtonPressed()
       renoise.tool().app_idle_observable:remove_notifier(idleNotifier)
     end
   else
-    self.lineProcessor:resetStepCounter()
+    -- self.lineProcessor:resetStepCounter()
     -- patternPlayCount = 0
     patternSetCount = 1
     -- Do the first step so the first line gets populated
     -- Make sure that the pattern gets initialized:
     currLine = 0
     totalIterations = 0
-    currPattern.value = 0
-    nextPattern.value = 1
+    currPattern.value = nextPattern.value - 1
+    -- nextPattern.value = 1
     self:stepNotifier()
     currLine = 1
     totalIterations = 0
@@ -398,10 +399,12 @@ function Live:onNextButtonPressed()
 end
 
 -- Called when the "Mute Queue" button is pressed
+--[[
 function Live:onMuteQueuePressed()
   isMuteQueueActive = isMuteQueueActive == false
   self.dialog:setMuteQueueButtonState(isMuteQueueActive)
 end
+]]--
 
 -- Called when a track is muted from the lineProcessor
 function Live:onSetTrackMuted(trackIndex, muted)
