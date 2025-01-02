@@ -29,8 +29,13 @@ end
 -- Determine if there is a fill
 -- Returns true if the note is to be kept, false if the note is to be cleared
 isFillActive = function(isFillApplicable, amountString)
-  -- Only "ZF01" is allowed to play ...
+  -- "ZF01" is allowed to play when fill is applicable
   if isFillApplicable and amountString == "01" then
+    return true
+  end
+  
+  -- "ZF00" is allowed to play when fill is not applicable
+  if isFillApplicable == false and amountString == "00" then
     return true
   end
   

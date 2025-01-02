@@ -106,6 +106,9 @@ function Live:setupPattern()
       end
       muteQueue = {}
     end
+    
+    -- TODO: Iterate over all tracks and columns, if they don't have a "ZM", unmute them:
+    
 
     -- masterTrackLength = srcPattern.number_of_lines
     
