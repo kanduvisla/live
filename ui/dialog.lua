@@ -431,8 +431,16 @@ function Dialog:setUnmuteCounter(trackIndex, value)
 end
 
 -- Update the muted column count
-function Dialog:updateMutedColumnCount(trackIndex, delta)
-  trackState[trackIndex].mutedColumnCount.value = trackState[trackIndex].mutedColumnCount.value + 1
+function Dialog:updateMutedColumnCount(trackIndex)
+  local songTrack = self.song:track(trackIndex)
+  local columns = self.song:pattern(1):track(trackIndex):line(1).note_columns
+  local value = 0
+  for c=1, #columns do
+    if songTrack:column_is_muted(c) then
+      value = value + 1
+    end
+  end
+  trackState[trackIndex].mutedColumnCount.value = value
 end
 
 -- Reset the dialog
