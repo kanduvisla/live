@@ -103,9 +103,6 @@ function Live:setupPattern()
       muteQueue = {}
     end
     
-    -- TODO: Iterate over all tracks and columns, if they don't have a "ZM", unmute them:
-    
-
     -- Pattern 0 is always 16 steps. The script always pastes new data to the next line
     dst.number_of_lines = totalLength
 
@@ -123,6 +120,8 @@ function Live:setupPattern()
           self:getPatternTrackLength(srcPattern, trackIndex),
           srcPattern
         )
+        -- Iterate over all tracks and columns, if they don't have a "ZM", unmute them:
+        self:unMuteTrack(srcPattern, trackIndex)
       end
     end
     
@@ -153,6 +152,30 @@ function Live:getPatternTrackLength(srcPattern, trackIndex)
   end
 
   return number_of_lines
+end
+
+-- Unmute track:
+function Live:unMuteTrack(srcPattern, trackIndex)
+  local patternTrack = srcPattern:track(trackIndex)
+  local songTrack =  self.song:track(trackIndex)
+  local line = patternTrack:line(1)
+  local effect = line:effect_column(1)
+  if effect.number_string ~= "ZM" then
+    -- unmute track:
+    songTrack:unmute()
+    self.dialog:setMutedStatus(trackIndex, false)
+  end
+  
+  -- Iterate over columns:  
+  local columns = line.note_columns
+  for c=1, #columns do
+    local column = line:note_column(c)
+    if column.effect_number_string ~= "ZM" then
+      -- umute column:
+       songTrack:set_column_is_muted(c, false)
+       self:onSetTrackColumnMuted(trackIndex, c, false)
+    end
+  end
 end
 
 -- Idle observer
@@ -297,6 +320,7 @@ function Live:toggleMute(trackIndex)
     track:unmute()
     self.dialog:setMutedStatus(trackIndex, false)
     -- Unmute all columns?
+    
   end
 
   self.dialog:updateTrackButtonColor(trackIndex)
