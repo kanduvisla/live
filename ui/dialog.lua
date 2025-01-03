@@ -67,16 +67,16 @@ function Dialog:createTrackButton(trackIndex)
     
     if self.trackState[trackIndex].unmuteCounter.value > 0 then
       button.text = string.format(
-        "%s\n%s\n(M:%s)", 
+        "%s - (M:%s)\n%s", 
         trackIndex, 
         trackName, 
         self.trackState[trackIndex].unmuteCounter.value
       )  
     elseif self.trackState[trackIndex].muted.value == true then
-      button.text = string.format("%s\n%s\n(M)", trackIndex, trackName)
+      button.text = string.format("%s - (M)\n%s", trackIndex, trackName)
     elseif self.trackState[trackIndex].mutedColumnCount.value > 0 then
       button.text = string.format(
-        "%s\n%s\n(MC:%s)", 
+        "%s - (MC:%s)\n%s", 
         trackIndex, 
         trackName,
         self.trackState[trackIndex].mutedColumnCount.value

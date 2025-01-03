@@ -95,14 +95,6 @@ function Live:setupPattern()
     -- Prepare a new pattern
     local srcPattern = self.song:pattern(nextPattern.value + 1)
     
-    -- Process mute queue
-    for trackIndex, process in pairs(muteQueue) do
-      if process then
-        self:toggleMute(trackIndex)
-      end
-      muteQueue = {}
-    end
-    
     -- Pattern 0 is always 16 steps. The script always pastes new data to the next line
     dst.number_of_lines = totalLength
 
@@ -129,6 +121,14 @@ function Live:setupPattern()
     currPattern.value = nextPattern.value
   else
     totalIterations = totalIterations + 1
+
+    -- Process mute queue
+    for trackIndex, process in pairs(muteQueue) do
+      if process then
+        self:toggleMute(trackIndex)
+      end
+      muteQueue = {}
+    end
     
     -- If we're back at the start, the user initiated fill needs to be reset:
     if patternPlayCount % patternSetCount == 0 then
@@ -329,7 +329,7 @@ end
 -- Called when a track button is pressed
 function Live:onTrackButtonPressed(trackIndex, isShift)
   isShift = isShift or false
-  print(isShift)
+
   -- Mute track:
   if isShift == false then
     self:toggleMute(trackIndex)
