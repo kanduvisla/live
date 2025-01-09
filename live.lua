@@ -69,7 +69,7 @@ end
 
 function Live:setInstrumentName(trackIndex, instrumentName)
   local mappedInstrumentName = instrumentName
-  
+
   -- Cycles:
   if instrumentName == "00" then mappedInstrumentName = "C1" end
   if instrumentName == "01" then mappedInstrumentName = "C2" end
@@ -128,6 +128,9 @@ function Live:setupPattern()
       self.dialog:setPatternName("Pattern #" .. nextPattern.value + 1)
     end
     
+    -- Check for MIDI PC instructions:
+    -- self:checkForMidiPcInstruction(srcPattern)
+
     -- Pattern 0 is always 16 steps. The script always pastes new data to the next line
     dst.number_of_lines = totalLength
 
@@ -167,6 +170,30 @@ function Live:setupPattern()
     if patternPlayCount % patternSetCount == 0 then
       userInitiatedFill = false
       self.dialog:setFillButtonState(false)
+    end
+  end
+end
+
+-- Check for MIDI PC Instructions
+function Live:checkForMidiPcInstruction(srcPattern)
+  local number_of_lines = srcPattern.number_of_lines
+  -- Iterate over master track:
+  for trackIndex=1, #dst.tracks do
+    local track = self.song:track(trackIndex)
+    -- Check for "program change" track
+    if track.name == "PC" then
+      local masterTrack = srcPattern:track(trackIndex)
+      -- Check for "M2"
+      for l=1, number_of_lines do
+        local line = patternTrack:line(l)
+        local column = line:note_column(1) -- PC track only has 1 column
+        local panning_string = column.panning_string
+        local effect_amount = column.effect_amount_string
+        local instrument_string = column.instrument_string
+        if panning_string == "M2" then
+          -- TODO: MIDI PC 
+        end
+      end
     end
   end
 end
