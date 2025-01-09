@@ -5,12 +5,13 @@ Dialog.__index = Dialog
 local doc = renoise.Document
 local app = renoise.app()
 local vbp = renoise.ViewBuilder()
-local buttonWidth = 90
-local buttonHeight = 45
+local buttonWidth = 120
+local buttonHeight = 60
 local trackState = {}
 local dialog = nil
 local dialogContent = nil
 local isDebugEnabled = false
+local patternName = ""
 
 -- New instance to create an operate the dialog
 function Dialog:new(
@@ -202,6 +203,11 @@ function Dialog:createPatternIndicator()
   }
 end
 
+-- Set the pattern name
+function Dialog:setPatternName(name)
+  patternName = name
+end
+
 -- Update Pattern Indicator
 function Dialog:updatePatternIndicator(
   currPattern, 
@@ -217,25 +223,30 @@ function Dialog:updatePatternIndicator(
     return
   end
 
+  -- Line 1 = pattern # + step
+  -- Line 2 = pattern name
+
   if currPattern.value ~= nextPattern.value then
     patternIndicatorView.text = string.format(
-      "%s → %s (%s/%s) : %s/%s", 
+      "%s → %s (%s/%s) : %s/%s\n%s", 
       currPattern.value,
       nextPattern.value,
       (patternPlayCount % patternSetCount) + 1,
       patternSetCount,
       currentStep,
-      totalSteps
+      totalSteps,
+      patternName
     )
   else 
     patternIndicatorView.text = string.format(
-      "%s (%s/%s)%s : %s/%s", 
+      "%s (%s/%s)%s : %s/%s\n%s", 
       currPattern.value,
       (patternPlayCount % patternSetCount) + 1,
       patternSetCount,
       userInitiatedFill and " (F)" or "",
       currentStep,
-      totalSteps
+      totalSteps,
+      patternName
     )
   end
 end

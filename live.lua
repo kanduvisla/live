@@ -94,6 +94,11 @@ function Live:setupPattern()
   if nextPattern.value ~= currPattern.value and (patternPlayCount + 1) % patternSetCount == 0 then
     -- Prepare a new pattern
     local srcPattern = self.song:pattern(nextPattern.value + 1)
+    if srcPattern.name ~= "" then
+      self.dialog:setPatternName(srcPattern.name)
+    else
+      self.dialog:setPatternName("Pattern #" .. nextPattern.value + 1)
+    end
     
     -- Pattern 0 is always 16 steps. The script always pastes new data to the next line
     dst.number_of_lines = totalLength
