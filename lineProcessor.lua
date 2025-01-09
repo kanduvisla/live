@@ -108,7 +108,8 @@ function LineProcessor:processTrackLine(track, trackIndex, dstLineNumber, isFill
 
     -- Check if we need to mute or unmute this track now, otherwise: muted tracks are ignored from processing
     if effect.number_string == "ZM" then
-      processColumns = self:processMutedTrack(tonumber(effect.amount_string), trackPlayCount, track, trackIndex) == false
+      self:processMutedTrack(tonumber(effect.amount_string), trackPlayCount, track, trackIndex)
+      -- When muted, columns always need to be processed because they can be muted too!
     elseif effect.number_string == "ZR" then
       -- If there is no trig on track-level, there is no need for column processing:
       -- TODO: trackPlayCount might be affected by `ZC`-effect:
@@ -134,7 +135,7 @@ function LineProcessor:processTrackLine(track, trackIndex, dstLineNumber, isFill
     end
 
     -- Don't do an "else" here, because the previous step might have flipped this flag:
-    if track.mute_state ~= renoise.Track.MUTE_STATE_MUTED and processColumns == true then
+    if processColumns == true then
       -- Iterate over columns to process triggs & fills:
       local columns = line.note_columns
 
@@ -144,24 +145,32 @@ function LineProcessor:processTrackLine(track, trackIndex, dstLineNumber, isFill
         local effect_number = column.effect_number_string
         local effect_amount = column.effect_amount_string
 
-        if effect_number == "ZR" then
-          -- Trig:
-          processNote = is_trig_active(effect_amount, trackPlayCount)
-        elseif effect_number == "ZI" then
-          -- Inversed Trig:
-          processNote = is_trig_active(effect_amount, trackPlayCount) == false
-        elseif effect_number == "ZM" then
-          -- Mute
+        -- Only do the following checks if the track is not muted:
+        if track.mute_state ~= renoise.Track.MUTE_STATE_MUTED then
+          if effect_number == "ZR" then
+            -- Trig:
+            processNote = is_trig_active(effect_amount, trackPlayCount)
+          elseif effect_number == "ZI" then
+            -- Inversed Trig:
+            processNote = is_trig_active(effect_amount, trackPlayCount) == false
+          elseif effect_number == "ZM" then
+            -- Mute
+            processNote = self:processMutedColumn(tonumber(effect_amount), trackPlayCount, c, track, trackIndex) == false
+          elseif effect_number == "ZF" then
+            -- Fill:
+            processNote = isFillActive(isFillApplicable, effect_amount)
+          end
+        else
+          -- Only check if column needs to start in a muted state:
           processNote = self:processMutedColumn(tonumber(effect_amount), trackPlayCount, c, track, trackIndex) == false
-        elseif effect_number == "ZF" then
-          -- Fill:
-          processNote = isFillActive(isFillApplicable, effect_amount)
         end
         
         -- Copy column line:
         if processNote then
+          
           -- If no Live effect is processed, simply copy as-is:
           dst:track(trackIndex):line(dstLineNumber):note_column(c):copy_from(column)
+          dst:track(trackIndex):line(dstLineNumber):copy_from(line)
         else
           -- Otherwise clear destination line:
           dst:track(trackIndex):line(dstLineNumber):note_column(c):clear()
@@ -199,6 +208,9 @@ end
 
 -- Process muted state for a column
 function LineProcessor:processMutedColumn(effectAmount, trackPlayCount, columnIndex, track, trackIndex)
+  print("muted column: " .. columnIndex)
+  print("track play count: " .. trackPlayCount)
+  print("effect amount: " .. effectAmount)
   local result = isMuted(tonumber(effectAmount), trackPlayCount)
 
   if result == true then
