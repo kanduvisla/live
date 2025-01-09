@@ -60,6 +60,7 @@ function Dialog:createTrackButton(trackIndex)
     muted = doc.ObservableBoolean(false),
     unmuteCounter = doc.ObservableNumber(0),
     trigged = doc.ObservableBoolean(false),
+    instrumentName = doc.ObservableString(""),
     mutedColumnCount = doc.ObservableNumber(0)
   }
 
@@ -123,6 +124,11 @@ function Dialog:updateTrackButtonColor(trackIndex)
   end
 end
 
+-- Update the instrument name
+function Dialog:setInstrumentName(trackIndex, instrumentName)
+  self.trackState[trackIndex].instrumentName.value = instrumentName
+end
+
 -- Update Track Button
 function Dialog:updateTrackButton(trackIndex)
   if self.trackState[trackIndex] == nil then
@@ -141,6 +147,7 @@ function Dialog:updateTrackButton(trackIndex)
   else
     local trackName = track.name
     local trackColor = track.color
+    local instrumentName = self.trackState[trackIndex].instrumentName.value
     
     self.trackState[trackIndex].track = trackIndex
     self.trackState[trackIndex].trackName = trackName
@@ -153,7 +160,12 @@ function Dialog:updateTrackButton(trackIndex)
   
     button.color = trackColor
     button.active = true
-    button.text = string.format("%s\n%s", trackIndex, trackName)
+    button.text = string.format(
+      "%s - %s\n%s", 
+      trackIndex, 
+      instrumentName,
+      trackName
+    )
 
     self:updateTrackButtonColor(trackIndex)
   end

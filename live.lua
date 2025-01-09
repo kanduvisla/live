@@ -56,7 +56,8 @@ function Live:new(song)
     function(_, trackIndex, trackColumnIndex, muted) instance:onSetTrackColumnMuted(trackIndex, trackColumnIndex, muted) end,
     function(_, trackIndex, unmuteCounter) instance:onUpdateUnmuteCounter(trackIndex, unmuteCounter) end,
     function(_, newPatternSetCount) instance:onUpdatePatternSetCount(newPatternSetCount) end,
-    function(_, nextPatternValue) nextPattern.value = nextPatternValue end
+    function(_, nextPatternValue) nextPattern.value = nextPatternValue end,
+    function(_, trackIndex, instrumentName) instance:setInstrumentName(trackIndex, instrumentName) end
   )
 
   -- Set observers:
@@ -64,6 +65,33 @@ function Live:new(song)
   nextPattern:add_notifier(function() instance:updatePatternIndicator() end)
 
   return instance
+end
+
+function Live:setInstrumentName(trackIndex, instrumentName)
+  local mappedInstrumentName = instrumentName
+  
+  -- Cycles:
+  if instrumentName == "00" then mappedInstrumentName = "C1" end
+  if instrumentName == "01" then mappedInstrumentName = "C2" end
+  if instrumentName == "02" then mappedInstrumentName = "C3" end
+  if instrumentName == "03" then mappedInstrumentName = "C4" end
+  if instrumentName == "04" then mappedInstrumentName = "C5" end
+  if instrumentName == "05" then mappedInstrumentName = "C6" end
+  -- SH-4d:
+  if instrumentName == "08" then mappedInstrumentName = "S1" end
+  if instrumentName == "09" then mappedInstrumentName = "S2" end
+  if instrumentName == "0A" then mappedInstrumentName = "S3" end
+  if instrumentName == "0B" then mappedInstrumentName = "S4" end
+  if instrumentName == "0C" then mappedInstrumentName = "SR" end
+  -- Mega:
+  if instrumentName == "0F" then mappedInstrumentName = "M1" end
+  if instrumentName == "10" then mappedInstrumentName = "M2" end
+  if instrumentName == "11" then mappedInstrumentName = "M3" end
+  if instrumentName == "12" then mappedInstrumentName = "M4" end
+  if instrumentName == "13" then mappedInstrumentName = "M5" end
+  if instrumentName == "14" then mappedInstrumentName = "M6" end
+
+  self.dialog:setInstrumentName(trackIndex, mappedInstrumentName)
 end
 
 -- Called when a new song is loaded, or when the dialog is re-opened

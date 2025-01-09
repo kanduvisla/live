@@ -16,7 +16,8 @@ function LineProcessor:new(
   onSetTrackColumnMuted,
   onUpdateUnmuteCounter,
   onChangePatternSetCount,
-  onSetNextPattern
+  onSetNextPattern,
+  onSetInstrumentName
 )
   local instance = setmetatable({}, LineProcessor)
 
@@ -29,6 +30,7 @@ function LineProcessor:new(
   instance.onUpdateUnmuteCounter = onUpdateUnmuteCounter
   instance.onChangePatternSetCount = onChangePatternSetCount
   instance.onSetNextPattern = onSetNextPattern
+  instance.onSetInstrumentName = onSetInstrumentName
 
   return instance
 end
@@ -144,6 +146,7 @@ function LineProcessor:processTrackLine(track, trackIndex, dstLineNumber, isFill
         local column = line:note_column(c)
         local effect_number = column.effect_number_string
         local effect_amount = column.effect_amount_string
+        local instrument = column.instrument_string
 
         -- Only do the following checks if the track is not muted:
         if track.mute_state ~= renoise.Track.MUTE_STATE_MUTED then
@@ -167,10 +170,11 @@ function LineProcessor:processTrackLine(track, trackIndex, dstLineNumber, isFill
         
         -- Copy column line:
         if processNote then
-          
           -- If no Live effect is processed, simply copy as-is:
           dst:track(trackIndex):line(dstLineNumber):note_column(c):copy_from(column)
           dst:track(trackIndex):line(dstLineNumber):copy_from(line)
+          -- Set instrument name:
+          self:onSetInstrumentName(trackIndex, instrument)
         else
           -- Otherwise clear destination line:
           dst:track(trackIndex):line(dstLineNumber):note_column(c):clear()
