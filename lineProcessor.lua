@@ -174,7 +174,9 @@ function LineProcessor:processTrackLine(track, trackIndex, dstLineNumber, isFill
           dst:track(trackIndex):line(dstLineNumber):note_column(c):copy_from(column)
           dst:track(trackIndex):line(dstLineNumber):copy_from(line)
           -- Set instrument name:
-          self:onSetInstrumentName(trackIndex, instrument)
+          if instrument ~= ".." then
+            self:onSetInstrumentName(trackIndex, instrument)
+          end
         else
           -- Otherwise clear destination line:
           dst:track(trackIndex):line(dstLineNumber):note_column(c):clear()

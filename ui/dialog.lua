@@ -66,11 +66,13 @@ function Dialog:createTrackButton(trackIndex)
 
   local function setButtonText()
     local trackName = self.trackState[trackIndex].trackName
+    local instrumentName = self.trackState[trackIndex].instrumentName.value
     
     if self.trackState[trackIndex].unmuteCounter.value > 0 then
       button.text = string.format(
-        "%s - (M:%s)\n%s", 
+        "%s : %s - (M:%s)\n%s", 
         trackIndex, 
+        instrumentName, 
         trackName, 
         self.trackState[trackIndex].unmuteCounter.value
       )  
@@ -78,13 +80,19 @@ function Dialog:createTrackButton(trackIndex)
       button.text = string.format("%s - (M)\n%s", trackIndex, trackName)
     elseif self.trackState[trackIndex].mutedColumnCount.value > 0 then
       button.text = string.format(
-        "%s - (MC:%s)\n%s", 
+        "%s : %s - (MC:%s)\n%s", 
         trackIndex, 
+        instrumentName, 
         trackName,
         self.trackState[trackIndex].mutedColumnCount.value
       )
     else        
-      button.text = string.format("%s\n%s", trackIndex, trackName)
+      button.text = string.format(
+      "%s : %s\n%s",
+      trackIndex,
+      instrumentName, 
+      trackName
+      )
     end
   end
   
@@ -92,6 +100,7 @@ function Dialog:createTrackButton(trackIndex)
   self.trackState[trackIndex].unmuteCounter:add_notifier(setButtonText)
   self.trackState[trackIndex].muted:add_notifier(setButtonText)
   self.trackState[trackIndex].mutedColumnCount:add_notifier(setButtonText)
+  self.trackState[trackIndex].instrumentName:add_notifier(setButtonText)
     
   -- Observer for the blinking Indicator
   self.trackState[trackIndex].trigged:add_notifier(function()
@@ -208,7 +217,7 @@ function Dialog:createPatternIndicator()
     id = "pattern_indicator",
     text =  "-",
     align = "center",
-    font = "big",
+    font = "mono",
     style = "strong",
     width = buttonWidth * 4,
     height = buttonHeight

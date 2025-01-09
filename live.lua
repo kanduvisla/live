@@ -69,7 +69,7 @@ end
 
 function Live:setInstrumentName(trackIndex, instrumentName)
   local mappedInstrumentName = instrumentName
-
+  
   -- Cycles:
   if instrumentName == "00" then mappedInstrumentName = "C1" end
   if instrumentName == "01" then mappedInstrumentName = "C2" end
