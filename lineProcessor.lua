@@ -139,11 +139,13 @@ function LineProcessor:processTrackLine(track, trackIndex, dstLineNumber, isFill
     -- Don't do an "else" here, because the previous step might have flipped this flag:
     if processColumns == true then
       -- Iterate over columns to process triggs & fills:
+      -- Wait, does this fetch ALL columns? Not just from this track ??!?
       local columns = line.note_columns
 
       for c=1, #columns do
         local processNote = true
         local column = line:note_column(c)
+        
         local effect_number = column.effect_number_string
         local effect_amount = column.effect_amount_string
         local instrument = column.instrument_string
@@ -171,8 +173,13 @@ function LineProcessor:processTrackLine(track, trackIndex, dstLineNumber, isFill
         -- Copy column line:
         if processNote then
           -- If no Live effect is processed, simply copy as-is:
-          dst:track(trackIndex):line(dstLineNumber):note_column(c):copy_from(column)
-          dst:track(trackIndex):line(dstLineNumber):copy_from(line)
+          print(#columns)
+          if column.panning_string == "M2" then
+            dst:track(trackIndex):line(dstLineNumber):copy_from(line)
+          else
+            dst:track(trackIndex):line(dstLineNumber):note_column(c):copy_from(column)        
+          end
+          
           -- Set instrument name:
           if instrument ~= ".." then
             self:onSetInstrumentName(trackIndex, instrument)

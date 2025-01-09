@@ -61,7 +61,8 @@ function Dialog:createTrackButton(trackIndex)
     unmuteCounter = doc.ObservableNumber(0),
     trigged = doc.ObservableBoolean(false),
     instrumentName = doc.ObservableString(""),
-    mutedColumnCount = doc.ObservableNumber(0)
+    mutedColumnCount = doc.ObservableNumber(0),
+    empty = false
   }
 
   local function setButtonText()
@@ -77,7 +78,12 @@ function Dialog:createTrackButton(trackIndex)
         self.trackState[trackIndex].unmuteCounter.value
       )  
     elseif self.trackState[trackIndex].muted.value == true then
-      button.text = string.format("%s - (M)\n%s", trackIndex, trackName)
+      button.text = string.format(
+        "%s : %s - (M)\n%s", 
+        trackIndex, 
+        instrumentName, 
+        trackName
+      )
     elseif self.trackState[trackIndex].mutedColumnCount.value > 0 then
       button.text = string.format(
         "%s : %s - (MC:%s)\n%s", 
