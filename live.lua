@@ -142,7 +142,8 @@ function Live:setupPattern()
 
     -- Get track data of individual tracks:
     for trackIndex=1, #dst.tracks do
-      if self.song.tracks[trackIndex].type == renoise.Track.TRACK_TYPE_SEQUENCER or self.song.tracks[trackIndex].type == renoise.Track.TRACK_TYPE_MASTER then
+      local track = self.song.tracks[trackIndex] 
+      if track.type == renoise.Track.TRACK_TYPE_SEQUENCER or track.type == renoise.Track.TRACK_TYPE_MASTER then
         trackData[trackIndex] = TrackData:new(
           trackIndex,
           self:getPatternTrackLength(srcPattern, trackIndex),
@@ -150,6 +151,8 @@ function Live:setupPattern()
         )
         -- Iterate over all tracks and columns, if they don't have a "ZM", unmute them:
         self:unMuteTrack(srcPattern, trackIndex)
+        -- Update empty state:
+        self.dialog:setTrackIsEmpty(trackIndex, srcPattern.tracks[trackIndex].is_empty) 
       end
     end
     

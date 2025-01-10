@@ -47,7 +47,6 @@ function Dialog:createTrackButton(trackIndex)
     height = buttonHeight,
     active = false,
     pressed = function()
-      -- rprint(self.onTrackButtonPressed)
       self:onTrackButtonPressed(trackIndex)
     end
   }
@@ -62,7 +61,7 @@ function Dialog:createTrackButton(trackIndex)
     trigged = doc.ObservableBoolean(false),
     instrumentName = doc.ObservableString(""),
     mutedColumnCount = doc.ObservableNumber(0),
-    empty = false
+    empty = doc.ObservableBoolean(true)
   }
 
   local function setButtonText()
@@ -113,6 +112,11 @@ function Dialog:createTrackButton(trackIndex)
     self:updateTrackButtonColor(trackIndex)
   end)
   
+  -- Observer for empty trakcs
+  self.trackState[trackIndex].empty:add_notifier(function()
+    self:updateTrackButtonColor(trackIndex)
+  end)
+  
   return button
 end
 
@@ -120,7 +124,9 @@ end
 function Dialog:updateTrackButtonColor(trackIndex)
   local button = vbp.views["track_button_" .. trackIndex]
   
-  if self.trackState[trackIndex].trigged.value == true then
+  if self.trackState[trackIndex].empty.value == true then
+    button.color = {0, 0, 0}
+  elseif self.trackState[trackIndex].trigged.value == true then
     if self.trackState[trackIndex].muted.value == true then
       button.color = {255, 0, 0}
     else 
@@ -142,6 +148,11 @@ end
 -- Update the instrument name
 function Dialog:setInstrumentName(trackIndex, instrumentName)
   self.trackState[trackIndex].instrumentName.value = instrumentName
+end
+
+-- Empty-flag
+function Dialog:setTrackIsEmpty(trackIndex, isEmpty)
+  self.trackState[trackIndex].empty.value = isEmpty
 end
 
 -- Update Track Button

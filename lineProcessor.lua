@@ -139,10 +139,7 @@ function LineProcessor:processTrackLine(track, trackIndex, dstLineNumber, isFill
     -- Don't do an "else" here, because the previous step might have flipped this flag:
     if processColumns == true then
       -- Iterate over columns to process triggs & fills:
-      -- Wait, does this fetch ALL columns? Not just from this track ??!?
-      local columns = line.note_columns
-
-      for c=1, #columns do
+      for c=1, track.visible_note_columns do
         local processNote = true
         local column = line:note_column(c)
         
@@ -173,7 +170,6 @@ function LineProcessor:processTrackLine(track, trackIndex, dstLineNumber, isFill
         -- Copy column line:
         if processNote then
           -- If no Live effect is processed, simply copy as-is:
-          print(#columns)
           if column.panning_string == "M2" then
             dst:track(trackIndex):line(dstLineNumber):copy_from(line)
           else
@@ -221,9 +217,6 @@ end
 
 -- Process muted state for a column
 function LineProcessor:processMutedColumn(effectAmount, trackPlayCount, columnIndex, track, trackIndex)
-  print("muted column: " .. columnIndex)
-  print("track play count: " .. trackPlayCount)
-  print("effect amount: " .. effectAmount)
   local result = isMuted(tonumber(effectAmount), trackPlayCount)
 
   if result == true then
