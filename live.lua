@@ -194,7 +194,7 @@ function Live:checkForMidiPcInstruction(srcPattern)
         local effect_amount = column.effect_amount_string
         local instrument_string = column.instrument_string
         if panning_string == "M2" then
-          -- TODO: MIDI PC 
+          -- TODO: MIDI PC
         end
       end
     end

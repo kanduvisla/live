@@ -7,6 +7,8 @@ LineProcessor.__index = LineProcessor
 
 local stepCount = 0
 local dst
+-- Keep track of midi instrument <-> effect value
+local midiProgramMap = {}
 
 -- Create a new line processor
 function LineProcessor:new(
@@ -171,7 +173,15 @@ function LineProcessor:processTrackLine(track, trackIndex, dstLineNumber, isFill
         if processNote then
           -- If no Live effect is processed, simply copy as-is:
           if column.panning_string == "M2" then
-            dst:track(trackIndex):line(dstLineNumber):copy_from(line)
+            -- Only copy if there are changes in instrument and effect amount,
+            -- otherwise it would reset some MIDI devices:
+            local instrument_string = column.instrument_string
+            if midiProgramMap[instrument_string] ~= effect_amount then
+              dst:track(trackIndex):line(dstLineNumber):copy_from(line)
+              midiProgramMap[instrument_string] = effect_amount
+            else
+              dst:track(trackIndex):line(dstLineNumber):clear()      
+            end      
           else
             dst:track(trackIndex):line(dstLineNumber):note_column(c):copy_from(column)        
           end
